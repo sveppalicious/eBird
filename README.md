@@ -137,6 +137,23 @@ pages are computed in the browser from payloads the municipality view has
 loaded anyway — no per-area files. URLs use a name slug where there is a name
 (`/area/midborg`) and the number otherwise (`/area/640`).
 
+**A postal district can straddle a municipality boundary**, and cutting it to
+the municipality is what keeps the tiling true — so the same póstnúmer survives
+as one area per municipality it reaches. 14 districts are split this way, into
+31 of the 187 areas; 660 Mývatn is the extreme case, with 6,048 km² in
+Þingeyjarsveit and interior slices of about 200 km² each in Norðurþing and
+Múlaþing. They are not duplicates, but the *label* names the district rather
+than the slice, so three polygons on one map legitimately read "660 Mývatn".
+The map tooltip carries the sveitarfélag underneath the label, and each area
+page names the others and links to them. `run_all.R` reports the count.
+
+**Areas with no checklists are still exported.** They exist on the map and are
+clickable, so the municipality has to list them: sourcing `area_ids` from the
+observed checklists instead left 806 in Grímsnes- og Grafningshreppur drawn but
+absent from `summary.json`, which hid the Póstnúmer tab and made its polygon a
+link to "No such póstnúmer here". `run_all.R` now asserts that every built area
+is listed by its municipality.
+
 ## Running it
 
 ```bash

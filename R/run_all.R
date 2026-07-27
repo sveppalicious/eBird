@@ -85,6 +85,30 @@ msg("Sub-areas:          ", length(used), " with checklists, of ", nrow(areas),
 msg("                    ", sum(kind[used] == "hverfi"), " named neighbourhoods, ",
     sum(kind[used] == "postnumer"), " postal areas")
 
+# Every area drawn on the map has to exist in the municipality that owns it,
+# whether or not anyone has birded it: the map makes them clickable, so an area
+# missing from summary.json is a link to a page that cannot render.
+for (s in unique(areas$slug)) {
+  f <- file.path(MUN_DIR, s, "summary.json")
+  if (!file.exists(f)) next
+  listed <- length(jsonlite::fromJSON(f, simplifyVector = FALSE)$areas)
+  built  <- sum(areas$slug == s)
+  if (listed != built) {
+    stop("summary.json for ", s, " lists ", listed, " areas, geometry has ", built)
+  }
+}
+msg("                    every built area is listed by its municipality  OK")
+
+# A postal district can straddle a municipality boundary, so the same label can
+# legitimately appear more than once. Report it rather than letting it look like
+# duplicated polygons on the map.
+dup <- table(areas$label)
+dup <- dup[dup > 1]
+if (length(dup)) {
+  msg("                    ", length(dup), " postal districts cross a municipality ",
+      "boundary and are split (", sum(dup), " areas)")
+}
+
 # Species counts per eBird region, for comparison against ebird.org. Ours should
 # be at or just below the live site: this EBD is the ", EBD_RELEASE, " snapshot.
 msg("")

@@ -118,11 +118,17 @@ export_municipality <- function(slug) {
   data.table::setorder(locs, loc_id)
   locs[, idx := .I - 1L]
 
-  # Postal areas of this municipality that actually hold checklists. Areas are
-  # carried as a column on the checklists rather than as their own payloads:
-  # obs.json already indexes into the checklists, so the whole fourth level
-  # comes for free client-side instead of tripling the file count.
-  area_ids <- sort(unique(stats::na.omit(co$area_id)))
+  # Every area of this municipality, including any that hold no checklists yet.
+  # Taking these from the checklists instead left 806 in Grimsnes- og
+  # Grafningshreppur drawn on the map and clickable but missing from
+  # summary.json, so the Postnumer tab vanished and the link 404ed. The map and
+  # meta.json both come from the geometry; this has to agree with them.
+  #
+  # Areas are carried as a column on the checklists rather than as their own
+  # payloads: obs.json already indexes into the checklists, so the whole fourth
+  # level comes for free client-side instead of tripling the file count.
+  this_slug <- slug
+  area_ids <- sort(area_meta[slug == this_slug]$area_id)
 
   obsrs  <- sort(unique(co$obsr));     obsr_idx  <- stats::setNames(seq_along(obsrs) - 1L, obsrs)
   protos <- sort(unique(co$protocol)); proto_idx <- stats::setNames(seq_along(protos) - 1L, protos)

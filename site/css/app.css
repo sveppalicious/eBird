@@ -177,6 +177,9 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
   background: rgba(35,49,58,0.94); color: #fff; padding: 7px 10px;
   border-radius: 4px; font-size: 13px; line-height: 1.35; white-space: nowrap;
 }
+/* Which sveitarfélag the area belongs to -- the only thing separating the
+   three polygons that all read "660 Mývatn". */
+.map-tip .tip-sub { color: #b9c8d1; }
 
 .map-legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-soft); flex-wrap: wrap; }
 .legend-bar { display: block; width: 220px; height: 12px; border-radius: 2px; }

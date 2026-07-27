@@ -130,7 +130,7 @@ const POINTS_KEY = 'mapPoints';
  * @param geo      GeoJSON FeatureCollection
  * @param values   Map id -> number (drives the colour)
  * @param opts     { onSelect, selected, zoomTo, onZoomOut, label, points,
- *                   idKey, nameKey }
+ *                   idKey, nameKey, sub }
  */
 function renderMap(geo, values, opts = {}) {
   const prep = prepare(geo, opts.idKey || 'slug', opts.nameKey || 'name');
@@ -202,8 +202,14 @@ function renderMap(geo, values, opts = {}) {
     p.setAttribute('class', 'map-area' + (isSel ? ' is-selected' : ''));
     p.dataset.slug = f.slug;
 
+    // The second line matters on the area layer: a postal district can straddle
+    // a municipality boundary, so three polygons on screen legitimately read
+    // "660 Mývatn" and only the sveitarfélag tells them apart.
+    const sub = opts.sub ? opts.sub.get(f.slug) : null;
     p.addEventListener('mousemove', e => showTip(e,
-      `<strong>${f.name}</strong><br>${v ? `${v} ${opts.label || 'species'}` : 'no records'}`));
+      `<strong>${f.name}</strong>` +
+      (sub ? `<br><span class="tip-sub">${sub}</span>` : '') +
+      `<br>${v ? `${v} ${opts.label || 'species'}` : 'no records'}`));
     p.addEventListener('mouseleave', () => { tip.hidden = true; });
 
     if (opts.onSelect && !isSel) {

@@ -105,6 +105,27 @@ function areaMapValues(meta) {
   };
 }
 
+// Which sveitarfélag each area belongs to. An area map draws its neighbours,
+// which belong to other municipalities, and a postal district that straddles a
+// boundary is kept as one slice per municipality -- so several polygons on
+// screen can legitimately carry the same label and only this tells them apart.
+function areaMunNames(meta) {
+  const name = new Map((meta.municipalities || []).map(m => [m.slug, m.name]));
+  return new Map((meta.areas || []).map(a => [a.id, name.get(a.slug) || '']));
+}
+
+// The other municipalities the same postal district reaches into. Named areas
+// are unique by construction, so this only ever fires for póstnúmer.
+function areaSiblings(meta, area, slug) {
+  if (!area || area.kind !== 'postnumer') return [];
+  const name = new Map((meta.municipalities || []).map(m => [m.slug, m.name]));
+  return (meta.areas || [])
+    .filter(a => a.kind === 'postnumer' && String(a.code) === String(area.code) &&
+                 a.slug !== slug)
+    .map(a => ({ slug: a.slug, code: a.code, name: name.get(a.slug) || a.slug,
+                 species: a.species, checklists: a.checklists }));
+}
+
 const PAGE = 100;
 
 function setLang(l) {
@@ -314,7 +335,7 @@ async function viewBirdList(root, slug, areaCode) {
     return;
   }
 
-  root.appendChild(munHeader(sum, 'birdlist', area));
+  root.appendChild(munHeader(sum, 'birdlist', area, meta));
 
   const statsHost = el('div', {});
   root.appendChild(statsHost);
@@ -337,7 +358,7 @@ async function viewBirdList(root, slug, areaCode) {
           idKey: 'area_id', nameKey: 'label',
           onSelect: id => areaHref(id, ageo),
           onZoomOut: () => { location.hash = `#/mun/${slug}/areas`; },
-          label, points: myPoints()
+          label, points: myPoints(), sub: areaMunNames(meta)
         }));
       } else {
         const geo = await loadGeo();
@@ -704,7 +725,7 @@ async function viewSpecies(root, slug, code, areaCode) {
   const areaIdx = area ? chk.areas.indexOf(area.id) : null;
   const recs = observationsForSpecies(obs, chk, code, areaIdx);
 
-  root.appendChild(munHeader(sum, 'birdlist', area));
+  root.appendChild(munHeader(sum, 'birdlist', area, meta));
 
   root.appendChild(el('div', { class: 'sp-head' },
     el('div', {},
@@ -810,7 +831,7 @@ async function viewChecklists(root, slug, areaCode) {
   root.textContent = '';
 
   const area = areaCode ? findArea(sum, areaCode) : null;
-  root.appendChild(munHeader(sum, 'checklists', area));
+  root.appendChild(munHeader(sum, 'checklists', area, meta));
 
   // Restricted to one postal area when viewing it; the area lives on the
   // checklist, so this is a plain filter over the same payload.
@@ -1232,7 +1253,7 @@ async function viewAreas(root, slug) {
   ]);
   root.textContent = '';
 
-  root.appendChild(munHeader(sum, 'areas'));
+  root.appendChild(munHeader(sum, 'areas', null, meta));
 
   const areas = [...(sum.areas || [])].sort((a, b) => b.species - a.species);
   if (!areas.length) {
@@ -1248,7 +1269,7 @@ async function viewAreas(root, slug) {
     idKey: 'area_id', nameKey: 'label',
     onSelect: id => areaHref(id, ageo),
     onZoomOut: () => { location.hash = `#/mun/${slug}`; },
-    label, points: myPoints()
+    label, points: myPoints(), sub: areaMunNames(meta)
   }));
   root.appendChild(el('p', { class: 'note' },
     `${sum.name} is covered by ${areas.length} ${areaKindLabel(areas).toLowerCase()}. ` +
@@ -1535,8 +1556,13 @@ function coverageBar(mine, total) {
 // shared chrome
 // -----------------------------------------------------------------------------
 
-function munHeader(sum, active, area) {
+function munHeader(sum, active, area, meta) {
   const nAreas = (sum.areas || []).length;
+  // A postal district can cross a municipality boundary. The areas are cut to
+  // the municipality so they still tile it exactly, which means the same
+  // póstnúmer appears once per municipality it reaches -- three times for 660
+  // Mývatn. Without this, those pages look like duplicates of each other.
+  const siblings = meta ? areaSiblings(meta, area, sum.slug) : [];
   return el('div', { class: 'mun-head' },
     el('div', { class: 'crumbs' },
       el('a', { href: '#/' }, 'Ísland'),
@@ -1550,6 +1576,17 @@ function munHeader(sum, active, area) {
     area ? el('p', { class: 'note' },
       `${area.kind === 'hverfi' ? 'Hverfi' : 'Póstnúmer'} within ${sum.name} — ` +
       `${area.areaKm2} km², ${fmtNum(area.localities)} eBird localities.`) : null,
+    siblings.length ? el('p', { class: 'note' },
+      el('span', { text:
+        `Postal district ${area.label} also reaches into ` +
+        `${siblings.length === 1 ? 'another sveitarfélag' : 'other sveitarfélög'}. ` +
+        `This page covers only the part inside ${sum.name}; the rest is under ` }),
+      ...siblings.map((s, i) => el('span', {},
+        i ? el('span', { text: i === siblings.length - 1 ? ' and ' : ', ' }) : null,
+        el('a', { href: `#/mun/${s.slug}/area/${s.code}` }, s.name),
+        el('span', { class: 'muted',
+          text: ` (${s.species} species, ${fmtNum(s.checklists)} checklists)` }))),
+      el('span', { text: '.' })) : null,
     // Only worth flagging where boat and pelagic checklists are a real share of
     // the data: those carry a single coordinate for a whole route, so they are
     // attributed to one municipality rather than split along the route.
