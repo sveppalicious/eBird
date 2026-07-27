@@ -281,7 +281,12 @@ function renderMap(geo, values, opts = {}) {
   const MIN_VIEW = WORLD * 0.00008;      // ~3 km across
   const MAX_VIEW = prep.full[2] * 3;
 
-  svg.addEventListener('wheel', e => {
+  // The frame, not the <svg>: the control bar floats over the map and on a
+  // phone covers a good part of it, and a wheel there used to fall through and
+  // scroll the page instead of zooming. Everything inside the border is map.
+  const frameEl = el('div', { class: 'map-frame' + (targets.length ? ' is-zoomed' : '') });
+
+  frameEl.addEventListener('wheel', e => {
     e.preventDefault();
     const r = svg.getBoundingClientRect();
     // Zoom about the cursor: the world point under it must not move.
@@ -296,14 +301,29 @@ function renderMap(geo, values, opts = {}) {
     applyView();
   }, { passive: false });
 
+  // Capture is taken only once a drag is genuinely under way, never on
+  // pointerdown. Capturing on down -- the obvious place -- retargets the
+  // following `click` to the <svg> itself, so the polygons never see it and the
+  // whole map goes dead to clicks. Under the threshold this stays an ordinary
+  // click and reaches the path.
+  const DRAG_PX = 4;
   let drag = null;
+  let panned = false;
+
   svg.addEventListener('pointerdown', e => {
-    drag = { x: e.clientX, y: e.clientY, view: view.slice() };
-    svg.setPointerCapture(e.pointerId);
-    svg.classList.add('is-dragging');
+    if (e.button > 0) return;
+    drag = { x: e.clientX, y: e.clientY, view: view.slice(), id: e.pointerId, moved: false };
+    panned = false;
   });
+
   svg.addEventListener('pointermove', e => {
     if (!drag) return;
+    if (!drag.moved) {
+      if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) < DRAG_PX) return;
+      drag.moved = true;
+      svg.setPointerCapture(drag.id);
+      svg.classList.add('is-dragging');
+    }
     const r = svg.getBoundingClientRect();
     const dx = (e.clientX - drag.x) / r.width * drag.view[2];
     const dy = (e.clientY - drag.y) / r.height * drag.view[3];
@@ -311,28 +331,27 @@ function renderMap(geo, values, opts = {}) {
     svg.setAttribute('viewBox', view.map(v => v.toFixed(2)).join(' '));
     tip.hidden = true;
   });
-  const endDrag = e => {
+
+  const endDrag = () => {
     if (!drag) return;
+    panned = drag.moved;
+    if (panned && svg.hasPointerCapture(drag.id)) svg.releasePointerCapture(drag.id);
     drag = null;
     svg.classList.remove('is-dragging');
-    if (e && e.pointerId != null && svg.hasPointerCapture(e.pointerId)) {
-      svg.releasePointerCapture(e.pointerId);
-    }
-    drawTiles();          // only now, so dragging stays cheap
+    if (panned) drawTiles();      // only now, so dragging stays cheap
   };
   svg.addEventListener('pointerup', endDrag);
   svg.addEventListener('pointercancel', endDrag);
 
-  // A click that followed a drag should not also select a polygon.
+  // After a real pan the capture already keeps the click off the polygons; this
+  // is the fallback for a browser that refused the capture. `panned` is cleared
+  // on the next pointerdown, so it can never strand a live click.
   svg.addEventListener('click', e => {
-    if (svg.dataset.moved === '1') { e.stopPropagation(); svg.dataset.moved = '0'; }
+    if (panned) { e.stopPropagation(); e.preventDefault(); }
+    panned = false;
   }, true);
-  svg.addEventListener('pointermove', e => { if (drag) svg.dataset.moved = '1'; }, true);
-  svg.addEventListener('pointerdown', () => { svg.dataset.moved = '0'; }, true);
 
   // ---- controls ------------------------------------------------------------
-
-  const frameEl = el('div', { class: 'map-frame' + (targets.length ? ' is-zoomed' : '') });
 
   const attribution = el('div', { class: 'map-attrib' });
   function syncAttribution() {

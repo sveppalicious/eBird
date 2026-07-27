@@ -235,15 +235,31 @@ selected the page requests nothing but its own files, which is what keeps the
 site self-contained and usable offline. Turning on **Kort** (OpenStreetMap) or
 **Gervihnöttur** (Esri World Imagery) starts fetching tiles from a third party
 at runtime; both are attributed in the corner as their terms require, and the
-choice persists. Over imagery the choropleth drops to 55% opacity and its
-hairlines darken so the ground shows through.
+choice persists. Over imagery the choropleth drops to a **22% wash** and its
+hairlines darken to carry the boundaries on their own: with a basemap on, the
+point is the ground, and hover leans on opacity rather than brightness because
+brightness barely reads that pale.
 
-One trap worth recording: the first draw used to run inside
-`requestAnimationFrame`, which is **suspended in a background tab** — opening
-the site in one left the points with no radius and the tiles undrawn. It now
-draws synchronously and redraws from a `ResizeObserver`, which fires on layout
-rather than on paint, and doubles as the window-resize handler since the tile
-zoom depends on pixel width.
+Two traps worth recording, both found the same way — a real click in a real
+browser, not a dispatched event.
+
+**Pointer capture eats the click.** Taking `setPointerCapture` on `pointerdown`
+is the obvious way to keep a drag alive outside the element, and it silently
+killed every polygon click on the map: capture retargets the following `click`
+to the capture element, so it arrived at the `<svg>` and the paths' own handlers
+never ran — `pointerdown` still hit the path, which is what makes it so
+confusing to read. Capture is now taken only once the pointer has moved past 4
+px, so an ordinary click never sets it and reaches the polygon normally.
+
+**`requestAnimationFrame` is suspended in a background tab.** The first draw
+used to run inside one, so opening the site in a background tab left the points
+with no radius and the tiles undrawn. It now draws synchronously and redraws
+from a `ResizeObserver`, which fires on layout rather than paint and doubles as
+the window-resize handler, since the tile zoom depends on pixel width.
+
+Wheel handling sits on the frame rather than the `<svg>`: the control bar floats
+over the map and covers a good part of it on a phone, where a wheel used to fall
+through and scroll the page instead of zooming.
 
 ## How the numbers are counted
 

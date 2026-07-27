@@ -111,10 +111,13 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
 .map-area.is-selected { stroke: var(--slate-dk); stroke-width: 2; cursor: default; }
 .map-area.is-selected:hover { filter: none; }
 
-/* Over imagery the fills have to let the ground through, and white hairlines
-   disappear against it, so the outlines darken. */
-.map-svg.has-basemap .map-area { fill-opacity: 0.55; stroke: rgba(20,30,36,0.55); }
-.map-svg.has-basemap .map-area.is-selected { fill-opacity: 0.4; stroke: #10242e; }
+/* Over imagery the point is the ground, not the choropleth, so the fills drop
+   to a wash. White hairlines vanish against aerial photography, so the outlines
+   darken to carry the boundaries on their own -- and hover has to lean on
+   opacity rather than brightness, which barely reads this pale. */
+.map-svg.has-basemap .map-area { fill-opacity: 0.22; stroke: rgba(16,26,32,0.7); }
+.map-svg.has-basemap .map-area:hover { fill-opacity: 0.45; }
+.map-svg.has-basemap .map-area.is-selected { fill-opacity: 0.16; stroke: #0b1a22; stroke-width: 2.4; }
 .map-tiles image { image-rendering: auto; }
 
 /* Your own localities. Sized in script so they hold a constant screen size at
@@ -143,6 +146,13 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
 .map-btn-solo { border-radius: var(--radius); }
 .map-btn:hover { border-color: var(--slate); color: var(--slate-dk); }
 .map-btn.is-active { background: var(--slate-dk); color: #fff; border-color: var(--slate-dk); }
+
+/* On a phone the map is only a few hundred px wide and the floating controls
+   were eating a third of it, leaving little left to aim at. */
+@media (max-width: 560px) {
+  .map-controls { top: 6px; left: 6px; gap: 4px; }
+  .map-btn { font-size: 11px; padding: 5px 8px; }
+}
 
 .map-attrib {
   position: absolute; right: 0; bottom: 0; z-index: 4;
