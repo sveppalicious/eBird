@@ -261,6 +261,15 @@ Wheel handling sits on the frame rather than the `<svg>`: the control bar floats
 over the map and covers a good part of it on a phone, where a wheel used to fall
 through and scroll the page instead of zooming.
 
+**Your locality dots are never filtered to the selected sveitarfélag.** A zoomed
+map still draws its neighbours, and cutting their dots made places you have
+birded plenty look untouched — the same mistake as colouring neighbours grey.
+The viewBox does the clipping. Because the dots sit above the polygons and cover
+the capital thickly, a click on one selects the polygon underneath rather than
+landing on nothing; the hit test works on either layer, since each path carries
+its own id. The species map is the one exception that *does* filter, to the
+localities where you recorded that taxon.
+
 ## How the numbers are counted
 
 Matching eBird's own rules, so the totals are comparable:

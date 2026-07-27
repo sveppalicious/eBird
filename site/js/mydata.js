@@ -442,11 +442,12 @@ function myChecklistCountInArea(areaId) {
   return (d && d.areas && d.areas[areaId] && d.areas[areaId].checklists) || 0;
 }
 
-// Your localities, for drawing on a map. `slug` filters them to one sveitarfelag.
-function myLocalities(slug) {
+// Your localities, for drawing on a map. Every one of them: the callers zoom by
+// moving the viewBox, so a map framed on one sveitarfelag still wants its
+// neighbours' dots. Each carries `slug`, if anything ever does need to filter.
+function myLocalities() {
   const d = getMyData();
-  if (!d || !d.locs) return null;
-  return slug ? d.locs.filter(L => L.slug === slug) : d.locs;
+  return (d && d.locs) || null;
 }
 
 // Your species counts for every area, for colouring an area map by your data.

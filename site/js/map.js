@@ -226,6 +226,20 @@ function renderMap(geo, values, opts = {}) {
     c.addEventListener('mousemove', e => showTip(e,
       `<strong>${pt.n}</strong><br>${pt.k} checklist${pt.k === 1 ? '' : 's'} · ${pt.s} species`));
     c.addEventListener('mouseleave', () => { tip.hidden = true; });
+    // The dots sit above the polygons and cover a city thickly enough to turn
+    // the capital into a dead zone, so a click on one selects whatever lies
+    // beneath it. Hit-testing with the layer switched off finds that polygon
+    // whichever layer is drawn, since each path carries its own id.
+    c.addEventListener('click', e => {
+      if (!opts.onSelect) return;
+      pointLayer.style.pointerEvents = 'none';
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      pointLayer.style.pointerEvents = '';
+      if (under && under.classList.contains('map-area') &&
+          under.dataset.slug && under.dataset.slug !== opts.selected) {
+        opts.onSelect(under.dataset.slug);
+      }
+    });
     pointLayer.appendChild(c);
     return { el: c, k: pt.k };
   });

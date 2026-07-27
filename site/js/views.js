@@ -85,8 +85,13 @@ function mapValues(meta) {
 // neighbours render grey, which reads as "no records" when they simply belong
 // to the next sveitarfelag.
 // Your localities, but only when the maps are describing your data.
-function myPoints(slug) {
-  return state.mapMode === 'mine' ? (myLocalities(slug) || []) : [];
+//
+// Deliberately never filtered to the selected sveitarfelag: a zoomed map still
+// shows its neighbours, and dropping their dots made places you have birded
+// plenty look untouched. The viewBox does the clipping, and the country map
+// already draws all of them, so this adds no new worst case.
+function myPoints() {
+  return state.mapMode === 'mine' ? (myLocalities() || []) : [];
 }
 
 function areaMapValues(meta) {
@@ -309,7 +314,7 @@ async function viewBirdList(root, slug, areaCode) {
           idKey: 'area_id', nameKey: 'label',
           onSelect: id => areaHref(id, ageo),
           onZoomOut: () => { location.hash = `#/mun/${slug}/areas`; },
-          label, points: myPoints(slug)
+          label, points: myPoints()
         }));
       } else {
         const geo = await loadGeo();
@@ -318,7 +323,7 @@ async function viewBirdList(root, slug, areaCode) {
           zoomTo: slug, selected: slug,
           onSelect: s => { location.hash = `#/mun/${s}`; },
           onZoomOut: () => { location.hash = '#/'; },
-          label, points: myPoints(slug)
+          label, points: myPoints()
         }));
       }
     };
@@ -1213,7 +1218,7 @@ async function viewAreas(root, slug) {
     idKey: 'area_id', nameKey: 'label',
     onSelect: id => areaHref(id, ageo),
     onZoomOut: () => { location.hash = `#/mun/${slug}`; },
-    label, points: myPoints(slug)
+    label, points: myPoints()
   }));
   root.appendChild(el('p', { class: 'note' },
     `${sum.name} is covered by ${areas.length} ${areaKindLabel(areas).toLowerCase()}. ` +
