@@ -65,6 +65,16 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
 .page-head-sub { font-size: 22px; color: var(--ink-faint); }
 .lede { color: var(--ink-soft); max-width: 62ch; margin: 6px 0 22px; }
 
+/* Says what the data is and how far it runs. Meant to be read once and then
+   ignored, so it sits below the lede rather than shouting above it. */
+.callout {
+  max-width: 78ch; margin: 0 0 22px; padding: 12px 16px;
+  background: var(--line-soft); border-left: 3px solid var(--slate);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 14px; line-height: 1.5; color: var(--ink-soft);
+}
+.callout strong { color: var(--ink); }
+
 .crumbs { font-size: 13px; color: var(--ink-faint); margin-bottom: 2px; }
 .mun-head { margin-bottom: 18px; }
 

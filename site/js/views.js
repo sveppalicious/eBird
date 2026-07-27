@@ -117,6 +117,27 @@ function loading(msg) {
   return el('div', { class: 'loading', text: msg || 'Loading…' });
 }
 
+// The EBD is a monthly snapshot, not a live feed, and nothing here says so
+// unless it is said out loud: someone looking for a bird they reported last
+// week would otherwise conclude the site is broken. The cut-off is read from
+// the data rather than written down, so it stays true after every rebuild.
+function ebdCutoff(meta) {
+  return fmtDate(meta.dateRange[1], state.lang);
+}
+
+function ebdNotice(meta) {
+  return el('div', { class: 'callout' },
+    el('strong', { text: 'This site is built from the eBird Basic Dataset (EBD), not from eBird live. ' }),
+    el('span', {},
+      `The EBD is published monthly, on the 15th, and each release ends with the ` +
+      `previous month. This build uses ${meta.ebdRelease} and covers records ` +
+      `through `),
+    el('strong', { text: ebdCutoff(meta) }),
+    el('span', {},
+      '. Anything submitted after that date — or still awaiting review — does ' +
+      'not appear here yet, and will arrive with a later release.'));
+}
+
 // "2019" for a single year, "2004–2011 · 2 years" for a span.
 function yearSpan(years) {
   if (!years || !years.length) return '';
@@ -169,6 +190,8 @@ async function viewHome(root) {
       `deeper, to the ${meta.totals.municipalities - 1} sveitarfélög, by placing every ` +
       `eBird locality inside a municipality boundary from Landmælingar Íslands.`)
   ));
+
+  root.appendChild(ebdNotice(meta));
 
   // Headline follows the same switch as the map below it.
   const statsHost = el('div', {});
@@ -804,6 +827,26 @@ async function viewChecklists(root, slug, areaCode) {
   const mySubs = myCl ? new Set(myCl.map(c => c.s)) : null;
   let onlyMine = hasMyData() && state.mapMode === 'mine' && !!mySubs;
 
+  // Built once, outside draw(): rebuilding the controls on every keystroke
+  // destroyed the <input> being typed into, taking focus and caret with it.
+  root.appendChild(el('div', { class: 'controls' },
+    el('div', { class: 'control-group grow' },
+      el('label', { text: 'Find' }),
+      el('input', {
+        type: 'search', placeholder: 'location or observer…', value: q,
+        oninput: e => { q = e.target.value; page = 0; draw(); }
+      })),
+    mySubs
+      ? el('div', { class: 'control-group' },
+          el('label', { text: 'Whose' }),
+          pills([['all', 'Everyone'], ['mine', 'Mín gögn']],
+            onlyMine ? 'mine' : 'all',
+            v => { onlyMine = v === 'mine'; page = 0; draw(); }))
+      : null,
+    el('div', { class: 'control-group' },
+      el('span', { class: 'muted', text: `${fmtNum(n)} checklists` }))
+  ));
+
   const host = el('div', {});
   root.appendChild(host);
   root.appendChild(footer(meta));
@@ -826,23 +869,6 @@ async function viewChecklists(root, slug, areaCode) {
 
   function draw() {
     host.textContent = '';
-    host.appendChild(el('div', { class: 'controls' },
-      el('div', { class: 'control-group grow' },
-        el('label', { text: 'Find' }),
-        el('input', {
-          type: 'search', placeholder: 'location or observer…', value: q,
-          oninput: e => { q = e.target.value; page = 0; draw(); }
-        })),
-      mySubs
-        ? el('div', { class: 'control-group' },
-            el('label', { text: 'Whose' }),
-            pills([['all', 'Everyone'], ['mine', 'Mín gögn']],
-              onlyMine ? 'mine' : 'all',
-              v => { onlyMine = v === 'mine'; page = 0; draw(); }))
-        : null,
-      el('div', { class: 'control-group' },
-        el('span', { class: 'muted', text: `${fmtNum(n)} checklists` }))
-    ));
 
     let rows = idx;
     if (onlyMine && mySubs) rows = rows.filter(i => mySubs.has(chk.sub[i]));
@@ -1100,26 +1126,30 @@ async function viewSpeciesIndex(root) {
       `been found in.`)
   ));
 
+  let q = '', sortKey = 'ord', sortDir = 1, page = 0;
+
+  // The controls are built once and never redrawn. Rebuilding them inside
+  // draw() destroyed the <input> the user was typing into, so focus and caret
+  // went with it and the box took one character per click.
+  root.appendChild(el('div', { class: 'controls' },
+    el('div', { class: 'control-group grow' },
+      el('label', { text: 'Find' }),
+      el('input', {
+        type: 'search', placeholder: 'Icelandic, English or scientific name…',
+        value: q,
+        oninput: e => { q = e.target.value; page = 0; draw(); }
+      })),
+    pills([['ord', 'Taxonomic'], ['m', 'Most widespread'],
+           ['k', 'Most checklists'], ['lastDate', 'Recently seen']],
+      sortKey, v => { sortKey = v; sortDir = v === 'ord' ? 1 : -1; page = 0; draw(); })
+  ));
+
   const host = el('div', {});
   root.appendChild(host);
   root.appendChild(footer(meta));
 
-  let q = '', sortKey = 'ord', sortDir = 1, page = 0;
-
   function draw() {
     host.textContent = '';
-    host.appendChild(el('div', { class: 'controls' },
-      el('div', { class: 'control-group grow' },
-        el('label', { text: 'Find' }),
-        el('input', {
-          type: 'search', placeholder: 'Icelandic, English or scientific name…',
-          value: q,
-          oninput: e => { q = e.target.value; page = 0; draw(); }
-        })),
-      pills([['ord', 'Taxonomic'], ['m', 'Most widespread'],
-             ['k', 'Most checklists'], ['lastDate', 'Recently seen']],
-        sortKey, v => { sortKey = v; sortDir = v === 'ord' ? 1 : -1; page = 0; draw(); })
-    ));
 
     let rows = idx;
     if (q.trim()) {
@@ -1553,6 +1583,9 @@ function munHeader(sum, active, area) {
 
 function footer(meta) {
   return el('footer', { class: 'foot' },
+    el('p', {},
+      `Records through ${ebdCutoff(meta)}. The EBD is released monthly, on the ` +
+      `15th, so recent sightings are not here yet.`),
     el('p', {}, meta.citation),
     el('p', {},
       `Municipality boundaries: ${meta.lmiVersion}, Landmælingar Íslands (CC BY 4.0). `,

@@ -360,6 +360,20 @@ shortfall, since this EBD is the June 2026 release and ends 30 Jun 2026.
 
 ## Data
 
+The EBD is a **monthly snapshot, not a live feed** — published on the 15th, each
+release ending with the previous month. The site says so on the front page and
+in every footer, because otherwise a birder who cannot find last week's rarity
+concludes the site is broken rather than out of date. The cut-off shown is read
+from `meta.dateRange[1]`, not written into the text, so it stays true after
+every rebuild; today it reads 30 Jun 2026.
+
+Two smaller notes on the front end. **Controls are built once, outside the
+redraw.** Rebuilding them on each keystroke destroyed the `<input>` being typed
+into, so the Find boxes on the species and checklist pages took one character
+per click before losing focus. And the **ÍS/EN switch** changes the primary
+species name, so it has no visible effect on pages that show no species names —
+the front map and the checklist browser.
+
 eBird Basic Dataset. Version: EBD_relJun-2026. Cornell Lab of Ornithology,
 Ithaca, New York. Jun 2026. Used under the
 [eBird terms of use](https://www.birds.cornell.edu/home/ebird-api-terms-of-use/).
