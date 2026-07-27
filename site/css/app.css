@@ -1,0 +1,321 @@
+/* app.css -- follows eBird's visual language: slate-blue headings, green
+   counts, generous white space, no chrome around the map. */
+
+:root {
+  --ink:        #23313a;
+  --ink-soft:   #5d7280;
+  --ink-faint:  #8b9aa5;
+  --slate:      #4b7b91;
+  --slate-dk:   #2f5468;
+  --green:      #2b7a45;
+  --line:       #e3e8ea;
+  --line-soft:  #eef2f3;
+  --bg:         #ffffff;
+  --bg-soft:    #f6f8f8;
+  --link:       #1c6b8c;
+  --accent:     #d94a54;
+  --radius:     6px;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---- top bar ------------------------------------------------------------- */
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 10px 24px;
+  background: var(--slate-dk); color: #fff;
+}
+.brand { color: #fff; display: flex; align-items: baseline; gap: 10px; }
+.brand:hover { text-decoration: none; }
+.brand-mark { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.brand-rest { font-size: 14px; opacity: 0.78; }
+
+.topnav { display: flex; align-items: center; gap: 18px; }
+.topnav a { color: #fff; font-size: 14px; opacity: 0.85; }
+
+.langswitch { display: flex; border: 1px solid rgba(255,255,255,0.35); border-radius: 4px; overflow: hidden; }
+.langswitch button {
+  background: transparent; border: 0; color: #fff; cursor: pointer;
+  font: 600 12px/1 inherit; letter-spacing: 0.5px; padding: 7px 11px;
+}
+.langswitch button.is-active { background: rgba(255,255,255,0.9); color: var(--slate-dk); }
+
+/* ---- layout -------------------------------------------------------------- */
+
+main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
+
+.page-head h1, .mun-head h1 {
+  color: var(--slate); font-weight: 300; font-size: 40px;
+  margin: 0 0 4px; letter-spacing: -0.5px;
+}
+.page-head-sub { font-size: 22px; color: var(--ink-faint); }
+.lede { color: var(--ink-soft); max-width: 62ch; margin: 6px 0 22px; }
+
+.crumbs { font-size: 13px; color: var(--ink-faint); margin-bottom: 2px; }
+.mun-head { margin-bottom: 18px; }
+
+.tabs { display: flex; gap: 4px; margin-top: 14px; border-bottom: 1px solid var(--line); }
+.tab {
+  padding: 9px 16px; font-size: 14px; font-weight: 600; color: var(--ink-soft);
+  border-bottom: 3px solid transparent; margin-bottom: -1px;
+}
+.tab:hover { text-decoration: none; color: var(--link); }
+.tab.is-active { color: var(--slate-dk); border-bottom-color: var(--slate); }
+
+/* ---- stat tiles ---------------------------------------------------------- */
+
+.stats { display: flex; flex-wrap: wrap; gap: 0; margin: 22px 0 26px; }
+.stat { padding: 2px 28px; border-left: 3px solid var(--line); min-width: 150px; }
+.stat:first-child { border-left-color: var(--green); padding-left: 18px; }
+.stat-value { font-size: 34px; font-weight: 700; line-height: 1.1; color: var(--slate-dk); }
+.stat:first-child .stat-value { color: var(--green); }
+.stat-label { font-size: 14px; color: var(--link); }
+.stat-sub { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+
+/* ---- map ----------------------------------------------------------------- */
+
+.map-wrap { margin: 0 0 8px; }
+.map-frame {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius); background: #fff;
+}
+.map-svg {
+  width: 100%; height: auto; display: block;
+  touch-action: none;                 /* we handle pan/zoom ourselves */
+  cursor: grab;
+}
+.map-svg.is-dragging { cursor: grabbing; }
+
+.map-area {
+  stroke: #fff; stroke-width: 0.9; cursor: pointer;
+  /* Keep outlines a constant screen width however far the viewBox is zoomed. */
+  vector-effect: non-scaling-stroke;
+  transition: filter .12s ease;
+}
+.map-area:hover { filter: brightness(1.08); stroke: var(--slate-dk); stroke-width: 1.6; }
+.map-area:focus { outline: none; stroke: var(--slate-dk); stroke-width: 2; }
+.map-area.is-selected { stroke: var(--slate-dk); stroke-width: 2; cursor: default; }
+.map-area.is-selected:hover { filter: none; }
+
+/* Over imagery the fills have to let the ground through, and white hairlines
+   disappear against it, so the outlines darken. */
+.map-svg.has-basemap .map-area { fill-opacity: 0.55; stroke: rgba(20,30,36,0.55); }
+.map-svg.has-basemap .map-area.is-selected { fill-opacity: 0.4; stroke: #10242e; }
+.map-tiles image { image-rendering: auto; }
+
+/* Your own localities. Sized in script so they hold a constant screen size at
+   every zoom; the ring is what keeps them legible over dark satellite tiles. */
+.map-point {
+  fill: #14313f; fill-opacity: 0.9;
+  stroke: #fff; stroke-width: 1.6; vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+.map-point:hover { fill: var(--accent); fill-opacity: 1; stroke-width: 2.4; }
+
+.map-controls {
+  position: absolute; top: 10px; left: 10px; z-index: 4;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start;
+}
+.map-btns { display: flex; }
+.map-btn {
+  font: 600 12px/1 inherit; padding: 7px 11px; cursor: pointer;
+  background: rgba(255,255,255,0.94); color: var(--link);
+  border: 1px solid var(--line); border-radius: 0;
+  box-shadow: 0 1px 3px rgba(35,49,58,0.18);
+}
+.map-btns .map-btn + .map-btn { border-left: 0; }
+.map-btns .map-btn:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.map-btns .map-btn:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+.map-btn-solo { border-radius: var(--radius); }
+.map-btn:hover { border-color: var(--slate); color: var(--slate-dk); }
+.map-btn.is-active { background: var(--slate-dk); color: #fff; border-color: var(--slate-dk); }
+
+.map-attrib {
+  position: absolute; right: 0; bottom: 0; z-index: 4;
+  background: rgba(255,255,255,0.86); padding: 2px 7px;
+  font-size: 11px; color: var(--ink-soft);
+  border-radius: var(--radius) 0 0 0;
+}
+.map-attrib a { color: var(--ink-soft); }
+
+.map-tip {
+  position: absolute; pointer-events: none; z-index: 5;
+  background: rgba(35,49,58,0.94); color: #fff; padding: 7px 10px;
+  border-radius: 4px; font-size: 13px; line-height: 1.35; white-space: nowrap;
+}
+
+.map-legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-soft); flex-wrap: wrap; }
+.legend-bar { display: block; width: 220px; height: 12px; border-radius: 2px; }
+.legend-label { margin-left: 4px; color: var(--ink-faint); }
+.legend-hint { margin-left: auto; color: var(--ink-faint); font-size: 11px; }
+
+/* ---- controls ------------------------------------------------------------ */
+
+.controls {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px;
+  margin: 20px 0 12px;
+}
+.control-group { display: flex; flex-direction: column; gap: 4px; }
+.control-group.grow { flex: 1 1 200px; }
+.control-group label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-faint); }
+.control-group select, .control-group input {
+  font: inherit; font-size: 14px; padding: 7px 10px;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: #fff; color: var(--ink);
+}
+.control-group input:focus, .control-group select:focus {
+  outline: 2px solid var(--slate); outline-offset: -1px;
+}
+
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill {
+  font: 600 13px/1 inherit; padding: 9px 15px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: #fff; color: var(--link);
+}
+.pill:hover:not(:disabled) { border-color: var(--slate); }
+.pill.is-active { background: #e8f2ef; border-color: var(--green); color: var(--green); }
+.pill:disabled { opacity: 0.4; cursor: default; }
+
+/* ---- tables -------------------------------------------------------------- */
+
+.table-wrap { overflow-x: auto; margin: 6px 0 4px; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th {
+  text-align: left; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.7px; color: var(--ink-faint); font-weight: 600;
+  padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.table th.sortable { cursor: pointer; user-select: none; }
+.table th.sortable:hover { color: var(--link); }
+.table th.sort-asc::after  { content: ' ▲'; font-size: 9px; }
+.table th.sort-desc::after { content: ' ▼'; font-size: 9px; }
+.table td { padding: 11px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+.table tbody tr:hover { background: var(--bg-soft); }
+.table .num, .table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.table .num-col { width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+.strong { font-weight: 700; }
+.muted { color: var(--ink-faint); }
+
+/* Not scoped to .birdlist: the species-range and coverage tables use these too,
+   and while .sp-meta was inline there the name and the year span ran together
+   ("Norðurþing1985–2026 · 30 years"). */
+.sp-name { font-weight: 700; font-size: 15px; }
+.sp-sec { color: var(--ink-soft); font-style: italic; margin-left: 6px; }
+.sp-meta { display: block; font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+.birdlist tr.is-other { background: #fcfcfa; }
+.birdlist tr.is-other .sp-name { font-weight: 400; color: var(--ink-soft); }
+
+.obsr { font-variant-numeric: tabular-nums; font-size: 13px; }
+.personal-loc { color: var(--ink-soft); cursor: default; }
+.personal-loc::after { content: ' (personal)'; font-size: 11px; color: var(--ink-faint); }
+
+.tag {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 3px;
+  background: #eef2f3; color: var(--ink-soft); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle;
+}
+
+.pager { display: flex; align-items: center; gap: 14px; padding: 14px 2px; }
+.pager-info { font-size: 13px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+/* ---- species detail ------------------------------------------------------ */
+
+.sp-head { display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; align-items: flex-start; margin: 18px 0 4px; }
+.sp-title { color: var(--slate); font-weight: 300; font-size: 34px; margin: 0; }
+.sp-sub { display: flex; flex-wrap: wrap; gap: 12px; color: var(--ink-soft); font-size: 15px; }
+.sp-actions { text-align: right; max-width: 340px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.btn {
+  display: inline-block; padding: 9px 16px; border-radius: var(--radius);
+  background: var(--green); color: #fff; font-weight: 600; font-size: 14px;
+}
+.btn:hover { text-decoration: none; background: #24693a; }
+.btn-ghost { background: #fff; color: var(--link); border: 1px solid var(--line); }
+.btn-ghost:hover { background: var(--bg-soft); color: var(--link); border-color: var(--slate); }
+
+.sp-title a { color: inherit; }
+.sp-title a:hover { color: var(--link); }
+
+.chart { margin: 22px 0; }
+.chart h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--ink-faint); margin: 0 0 8px; font-weight: 600; }
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 110px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; height: 100%; }
+.bar { background: var(--slate); border-radius: 2px 2px 0 0; min-height: 1px; }
+.bar-col:hover .bar { background: var(--accent); }
+.bar-label { font-size: 10px; color: var(--ink-faint); text-align: center; margin-top: 4px; height: 12px; overflow: hidden; }
+
+/* ---- my data ------------------------------------------------------------- */
+
+.dropzone {
+  display: block; text-align: center; cursor: pointer;
+  padding: 46px 24px; margin: 20px 0 18px;
+  border: 2px dashed var(--line); border-radius: 10px;
+  background: var(--bg-soft); transition: border-color .12s ease, background .12s ease;
+}
+.dropzone:hover, .dropzone.is-over { border-color: var(--green); background: #f2f8f4; }
+.dropzone input[type=file] { display: none; }
+.dropzone-icon { font-size: 26px; color: var(--green); line-height: 1; }
+.dropzone-main { font-size: 17px; font-weight: 600; color: var(--slate-dk); margin-top: 10px; }
+.dropzone-sub { font-size: 13px; color: var(--ink-faint); margin-top: 3px; }
+
+.privacy {
+  border-left: 3px solid var(--green); background: #f4f9f6;
+  padding: 14px 18px; border-radius: 0 var(--radius) var(--radius) 0;
+  margin: 20px 0; font-size: 14px;
+}
+.privacy p { margin: 6px 0 0; color: var(--ink-soft); }
+
+.howto { margin: 24px 0; font-size: 14px; color: var(--ink-soft); }
+.howto h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--ink-faint); font-weight: 600; margin: 0 0 8px; }
+.howto ol, .howto ul { margin: 0; padding-left: 20px; }
+.howto li { margin: 4px 0; }
+.howto code { background: var(--bg-soft); padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+
+.error-box {
+  border-left: 3px solid var(--accent); background: #fdf3f3;
+  padding: 12px 16px; border-radius: 0 var(--radius) var(--radius) 0; margin: 14px 0;
+}
+.error-box p { margin: 5px 0 0; color: var(--ink-soft); font-size: 14px; }
+.upload-status { min-height: 8px; }
+
+.coverage { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.coverage-bar { display: block; width: 56px; height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.coverage-fill { display: block; height: 100%; background: var(--green); }
+.coverage-pct { font-variant-numeric: tabular-nums; color: var(--ink-soft); min-width: 34px; }
+
+.seen-col { width: 30px; text-align: center; color: var(--green); font-weight: 700; }
+tr.is-seen .sp-name { color: var(--green); }
+.obsr.is-you { color: var(--green); font-weight: 600; font-variant-numeric: normal; }
+.is-mine { color: var(--green); font-weight: 700; }
+
+/* ---- misc ---------------------------------------------------------------- */
+
+.loading, .empty { padding: 40px 0; color: var(--ink-faint); }
+.note { font-size: 12px; color: var(--ink-faint); margin: 8px 0 0; line-height: 1.45; }
+.error { padding: 30px 0; }
+.error h2 { color: var(--accent); font-weight: 400; }
+
+.foot { margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-faint); }
+.foot p { margin: 5px 0; }
+
+@media (max-width: 720px) {
+  main { padding: 20px 14px 48px; }
+  .page-head h1, .mun-head h1 { font-size: 30px; }
+  .stat { padding: 2px 16px; min-width: 128px; }
+  .stat-value { font-size: 26px; }
+  .legend-bar { width: 130px; }
+}

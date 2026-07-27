@@ -1,0 +1,21 @@
+# Raw eBird Basic Dataset -- redistributable only under eBird's terms, and huge.
+ebd_IS_unv_smp_*/
+ebd_IS_unv_smp_*.zip
+
+# Personal eBird exports. These are a record of where someone has been and
+# when -- never commit one, and never copy one into site/. The belt-and-braces
+# rule: no CSV anywhere in the repo, since every CSV this project touches is
+# either a personal export or a slice of the EBD.
+MyEBirdData.csv
+*_MyEBirdData.csv
+ebird_*.csv
+*.csv
+
+# Intermediates
+work/
+
+.DS_Store
+.claude/settings.local.json
+.Rhistory
+.RData
+.Rproj.user/
