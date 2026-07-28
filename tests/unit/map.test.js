@@ -88,14 +88,31 @@ describe('viewBox padding', () => {
     near(y + h / 2, 5);
   });
 
-  test('keeps the shape of the content', () => {
+  test('keeps the shape of the content, within limits', () => {
     // Regression: an earlier version forced the viewBox to the element aspect
     // and cropped, which left every zoomed municipality off centre.
-    const box = [0, 0, 40, 10];                 // long and thin
-    const [x, y, w, h] = pad(box, 1);
-    near(w / h, 4);
-    near(x + w / 2, 20);
+    const [x, y, w, h] = pad([0, 0, 20, 10], 1);
+    near(w / h, 2);
+    near(x + w / 2, 10);
     near(y + h / 2, 5);
+  });
+
+  test('never frames a map taller than about 1.6 screens wide', () => {
+    // Akureyrarbær is 1:5.6. Followed literally that is a map ~1,800 px tall on
+    // a phone. The frame widens instead, and the content still fits inside it.
+    const box = [0, 0, 10, 56];
+    const [x, y, w, h] = pad(box, 1);
+    assert.ok(h / w < 1.7, `frame is ${(h / w).toFixed(2)}x taller than wide`);
+    assert.ok(w >= 10 && h >= 56, 'the content must still fit');
+    near(x + w / 2, 5);
+    near(y + h / 2, 28);
+  });
+
+  test('nor much wider than it is tall', () => {
+    const box = [0, 0, 100, 10];
+    const [, , w, h] = pad(box, 1);
+    assert.ok(w / h <= 2.45, `frame is ${(w / h).toFixed(2)}x wider than tall`);
+    assert.ok(w >= 100 && h >= 10, 'the content must still fit');
   });
 
   test('honours a minimum width for a tiny municipality', () => {

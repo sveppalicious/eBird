@@ -38,6 +38,14 @@ a:hover { text-decoration: underline; }
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px; padding: 10px 24px;
   background: var(--slate-dk); color: #fff;
+  /* The bar has to be able to get narrower than its content wants to be. Left
+     to itself its min-content width was 484px, and on a 390px phone Chrome
+     responds by widening the layout viewport and scaling the whole document
+     down to fit -- which is why every page used to render at about 80% and
+     look slightly soft. The rules in the small-screen block at the bottom of
+     this file are what actually fix that; this line is what lets the nav sit
+     on its own row instead of being squeezed onto one. */
+  flex-wrap: wrap;
 }
 .brand { color: #fff; display: flex; align-items: baseline; gap: 10px; }
 .brand:hover { text-decoration: none; }
@@ -335,10 +343,79 @@ tr.is-seen .sp-name { color: var(--green); }
 .foot { margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-faint); }
 .foot p { margin: 5px 0; }
 
+/* ---- small screens ------------------------------------------------------- */
+
 @media (max-width: 720px) {
   main { padding: 20px 14px 48px; }
   .page-head h1, .mun-head h1 { font-size: 30px; }
+  .page-head-sub { font-size: 17px; }
   .stat { padding: 2px 16px; min-width: 128px; }
   .stat-value { font-size: 26px; }
   .legend-bar { width: 130px; }
+}
+
+@media (max-width: 560px) {
+  /* The top bar takes two rows: brand on the first, every destination spread
+     across the second. Before this the nav simply ran off the right edge --
+     EN and the eBird link were unreachable -- and its 484px of unshrinkable
+     content dragged the whole layout viewport wider than the phone. */
+  .topbar { padding: 8px 14px; gap: 6px 0; }
+  .brand { width: 100%; gap: 8px; }
+  .brand-mark { font-size: 20px; }
+  .brand-rest { font-size: 12px; }
+  .topnav { width: 100%; gap: 10px; justify-content: space-between; }
+  .topnav a { font-size: 13px; }
+  .langswitch button { padding: 6px 9px; }
+
+  .page-head h1, .mun-head h1 { font-size: 25px; }
+  /* On its own line: "Ísland — sveitarfélög" set solid is most of the width. */
+  .page-head-sub { font-size: 15px; display: block; }
+  .lede { font-size: 15px; margin-bottom: 18px; }
+  .callout { font-size: 13px; padding: 10px 12px; }
+
+  /* Two even columns. As a flex row with a 128px floor the four tiles broke
+     1 / 2 / 1 down the page, which read as three unrelated groups. */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 0; margin: 18px 0 22px; }
+  .stat { min-width: 0; padding: 2px 12px; }
+  .stat-value { font-size: 23px; }
+  .stat-label { font-size: 13px; }
+
+  .tabs { gap: 0; }
+  .tab { padding: 9px 11px; font-size: 13px; }
+
+  /* The Find box gets a row to itself rather than being squeezed next to a
+     count or a set of pills. */
+  .controls { gap: 12px; margin: 16px 0 10px; }
+  .control-group.grow { flex-basis: 100%; }
+
+  /* Tables stay horizontally scrollable -- the alternative is hiding columns,
+     and every one of them is data somebody came for. What changes is how much
+     fits before you have to scroll: tighter cells, and dates that do not break
+     "30 jún 2026" across three lines. */
+  .table { font-size: 13px; }
+  .table th { padding: 8px 8px; }
+  .table td { padding: 9px 8px; }
+  .table td:first-child { white-space: nowrap; }
+  .sp-name { font-size: 14px; }
+  .sp-sec { margin-left: 0; display: block; }
+
+  .map-legend { font-size: 11px; gap: 6px; }
+  .legend-hint { width: 100%; margin-left: 0; }
+  .foot { margin-top: 32px; }
+}
+
+/* On a phone the wide tables scroll sideways, and scrolled far enough every row
+   becomes an anonymous set of numbers. Pinning the first column -- the date, or
+   the species -- keeps the answer to "which row am I on" on screen. It has to
+   carry its own background, or the scrolling columns show through it.
+   (A scroll-shadow gradient was tried here first and was not worth keeping: at
+   14px behind the text it was invisible even at full opacity.) */
+@media (max-width: 560px) {
+  .table th:first-child,
+  .table td:first-child {
+    position: sticky; left: 0; z-index: 1;
+    background: var(--bg);
+    box-shadow: 1px 0 0 var(--line-soft);
+  }
+  .table tbody tr:hover td:first-child { background: var(--bg-soft); }
 }

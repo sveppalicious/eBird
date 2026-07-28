@@ -108,14 +108,25 @@ function prepare(geo, idKey = 'slug', nameKey = 'name') {
   return geo[cacheKey];
 }
 
+// How far from square a map may be framed. The SVG is width:100% with the
+// height following the viewBox, so a 1:5.6 municipality -- Akureyrarbær is one
+// -- rendered as a map roughly 1,800 px tall on a phone: several screens of
+// scrolling for one shape. Widening the frame instead shows more of the
+// neighbours, which is the thing the drill-down wanted anyway.
+const MIN_ASPECT = 0.62;      // at most ~1.6x taller than wide
+const MAX_ASPECT = 2.4;       // at most 2.4x wider than tall
+
 // [minX, minY, maxX, maxY] -> viewBox [x, y, w, h], grown by `factor`.
 function pad(box, factor, minW = 0) {
   const [a, b, c, d] = box;
   const cx = (a + c) / 2, cy = (b + d) / 2;
   let w = Math.max((c - a) * factor, minW);
   let h = Math.max((d - b) * factor, minW * 0.55);
-  // Keep at least the shape of the content so a long thin area is not squashed.
-  const want = (c - a) / Math.max(d - b, 1e-9);
+  // Keep the shape of the content, within those limits, so a long thin area is
+  // neither squashed nor allowed to run off the bottom of the screen. Clamping
+  // only ever grows the frame, so the content still fits and stays centred.
+  const want = Math.min(MAX_ASPECT, Math.max(MIN_ASPECT,
+    (c - a) / Math.max(d - b, 1e-9)));
   if (w / h > want) h = w / want; else w = h * want;
   return [cx - w / 2, cy - h / 2, w, h];
 }

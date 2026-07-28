@@ -1,5 +1,10 @@
 # eBird Ísland — sveitarfélög
 
+[![Tests](https://github.com/sveppalicious/eBird/actions/workflows/ci.yml/badge.svg)](https://github.com/sveppalicious/eBird/actions/workflows/ci.yml)
+[![Deploy](https://github.com/sveppalicious/eBird/actions/workflows/pages.yml/badge.svg)](https://github.com/sveppalicious/eBird/actions/workflows/pages.yml)
+
+**[sveppalicious.github.io/eBird](https://sveppalicious.github.io/eBird/)**
+
 eBird exposes three sub-national levels for Denmark but only two for Iceland:
 country → landshluti (IS-1 … IS-8) → nothing. This project adds the missing
 level, **sveitarfélög (municipalities)**, with a Bird List, a species page and a
@@ -206,6 +211,36 @@ At roughly 48 MB, `site/data/` is well inside the 1 GB Pages limit, but it is
 committed data and every quarterly rebuild adds another copy to history. If the
 repo becomes unwieldy after a few years, the fix is to publish `site/` from an
 orphan branch rather than to rewrite history.
+
+## Small screens
+
+Most of this gets read on a phone in the field, so the layout is checked at
+390 px in CI, not only by eye.
+
+One bug there was worth the whole exercise. The top bar's content had a
+min-content width of **484 px**; on a 390 px phone Chrome responds to that by
+widening the layout viewport and scaling the entire document down to fit. The
+result is not a broken page — it is every page rendering at about 80% and
+looking faintly soft, with no obvious cause. Two links were also simply off the
+right edge, unreachable. The fix is the small-screen block at the foot of
+`app.css`: the bar takes two rows, and `tests/browser/mobile.spec.js` asserts
+`innerWidth === documentElement.clientWidth`, which is the difference between
+"the phone chose this width" and "the browser gave up".
+
+The rest, in rough order of how much they matter:
+
+- **Maps are capped at about 1.6× taller than wide.** Akureyrarbær is 1:5.6, and
+  framed literally that was a map roughly 1,800 px tall — several screens for one
+  shape. `pad()` widens the frame instead, which shows more of the neighbours.
+- **The first table column is sticky.** Scrolled sideways, a checklist row is
+  otherwise an anonymous set of numbers; the date stays pinned.
+- Stat tiles become a 2×2 grid rather than a flex row that straggles 1 / 2 / 1.
+- Dates no longer break "30 jún 2026" across three lines, which was costing more
+  width than it saved, and the Find box gets a row to itself.
+
+A scroll-shadow gradient was tried on the wide tables and removed: at 14 px
+behind the text it was invisible even at full opacity. Invisible CSS is worse
+than none.
 
 ## Tests
 
