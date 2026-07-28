@@ -1,0 +1,21 @@
+{
+  "name": "ebird-iceland-subregions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "eBird data for Iceland one administrative level deeper than eBird publishes",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
+    "test:unit": "node --test \"tests/unit/*.test.js\"",
+    "test:data": "node --test \"tests/data/*.test.js\"",
+    "test:browser": "playwright test",
+    "test:all": "npm test && npm run test:browser",
+    "serve": "./serve.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

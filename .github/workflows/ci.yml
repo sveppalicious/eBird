@@ -1,0 +1,63 @@
+name: Tests
+
+# CI cannot rebuild the data: the EBD is 735 MB, licensed, and deliberately not
+# in the repo. What it can do is check that the payloads that ARE committed --
+# the ones actually served to people -- are internally consistent, and that the
+# site still behaves in a real browser. R/run_all.R covers the build side
+# locally, and its assertions are mirrored here against its output.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-data:
+    name: unit + data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # No install step: these suites use node:test and read the repo. Keeping
+      # them dependency-free is what makes them run in seconds and never break
+      # because of something upstream.
+      - name: Unit and data tests
+        run: node --test "tests/**/*.test.js"
+
+  browser:
+    name: browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests
+        run: npx playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

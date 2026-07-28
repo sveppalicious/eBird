@@ -24,13 +24,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Publishing is one-way: once a broken payload is live it is live until the
+  # next push, and Pages caches assets for ten minutes on top of that. So the
+  # checks that validate exactly what is about to be uploaded run first. These
+  # need no dependencies and take a few seconds.
+  verify:
+    name: verify payloads
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: node --test "tests/**/*.test.js"
+
   deploy:
+    needs: verify
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

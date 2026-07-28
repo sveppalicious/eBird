@@ -41,7 +41,11 @@ const RAMP = ['#f5e79e', '#f2d180', '#eeb46c', '#e89463', '#e2705f', '#d94a54'];
 const EMPTY_FILL = '#e4e4e2';
 
 function rampColor(t) {
-  if (t <= 0) return RAMP[0];
+  // NaN fails every comparison below and indexes RAMP with NaN, which throws
+  // inside mix() and takes the whole map with it. Not reachable today -- the
+  // caller divides by a max that is at least 1 -- but a colour function has no
+  // business being partial.
+  if (!Number.isFinite(t) || t <= 0) return RAMP[0];
   const x = Math.min(0.999, t) * (RAMP.length - 1);
   const i = Math.floor(x);
   return mix(RAMP[i], RAMP[i + 1], x - i);
@@ -464,4 +468,7 @@ function legend(max, label) {
   );
 }
 
-export { renderMap, rampColor };
+// `project`, `pad` and WORLD are exported for the tests: they are the arithmetic
+// the tiles depend on, and they are the part of this file that can be checked
+// without a browser.
+export { renderMap, rampColor, project, pad, WORLD };

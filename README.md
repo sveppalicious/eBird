@@ -207,6 +207,45 @@ committed data and every quarterly rebuild adds another copy to history. If the
 repo becomes unwieldy after a few years, the fix is to publish `site/` from an
 orphan branch rather than to rewrite history.
 
+## Tests
+
+```bash
+npm test           # unit + data, no dependencies, ~1s
+npm run test:browser   # Playwright, needs `npm ci` first
+```
+
+CI runs both on every push and pull request, and the **Pages deploy is gated on
+`npm test`** — publishing is one-way, and Pages caches assets for ten minutes on
+top of that, so a broken payload should not be able to reach the live site.
+
+**CI cannot rebuild the data.** The EBD is 735 MB, licensed, and deliberately
+not in the repo, so `run_all.R` is a local step. What CI can check is that the
+payloads that *are* committed — the ones actually served — are internally
+consistent. The build-time assertions in `run_all.R` and the data tests are
+therefore two views of the same invariants, one over the tables and one over the
+JSON.
+
+| suite | what it is for | deps |
+|---|---|---|
+| `tests/unit/` | dates, numbers, eBird links, the CSV reader, Mercator arithmetic | none |
+| `tests/data/` | the committed payloads: tiling, ids, array shapes, geometry | none |
+| `tests/data/hygiene.test.js` | nothing private is publishable; the site stays self-contained | none |
+| `tests/browser/` | what only a real browser shows: clicks, focus, panning | Playwright |
+
+Almost every test corresponds to a bug that shipped, and says so in a comment.
+The split is not arbitrary: **roughly half this project's bugs were invisible to
+any test that does not drive a browser**, and the other half were invisible to
+any test that does. A pointer-capture bug made the whole map unclickable while
+hover, tooltips and the cursor all still worked; an area missing from
+`summary.json` was a dead link nobody would click by hand. Only one kind of
+suite catches each.
+
+Two habits worth keeping. **Assert on the code point, not the appearance** —
+the thousands separator was once U+202F, which renders as nothing in most fonts
+and looked correct in review. And **check that a test can fail**: both
+regression tests above were verified by reintroducing the bug and watching them
+go red, which is the only evidence that a green suite means anything.
+
 ## Layout
 
 ```
