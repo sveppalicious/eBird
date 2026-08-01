@@ -464,9 +464,138 @@ function myDateRangeInArea(areaId) {
   return a ? { first: a.first, last: a.last } : null;
 }
 
+// ---- firsts: when a species was new somewhere ---------------------------------
+
+// A "tick" is one (region, species) pair -- the unit a regional life list is
+// counted in. Both levels are included: a species can be new for a hverfi long
+// after it stopped being new for the sveitarfélag around it.
+function tickKeys(data) {
+  const keys = new Set();
+  if (!data) return keys;
+  for (const [slug, m] of Object.entries(data.municipalities || {})) {
+    for (const code of Object.keys(m.sp || {})) keys.add(`m|${slug}|${code}`);
+  }
+  for (const [id, a] of Object.entries(data.areas || {})) {
+    for (const code of Object.keys(a.sp || {})) keys.add(`a|${id}|${code}`);
+  }
+  return keys;
+}
+
+/**
+ * What a new import added over the one it replaces.
+ *
+ * Set difference, deliberately, not "records dated since last time": eBird
+ * exports are frequently backfilled -- an old notebook typed up, or a shared
+ * checklist accepted months later -- and those are new to your list even though
+ * the sighting is not new. Returns null when there is nothing to compare
+ * against, since "everything is new" is not news.
+ */
+function diffImports(prev, next) {
+  if (!prev) return null;
+  const before = tickKeys(prev);
+  const prevSpecies = new Set(prev.allSpecies || []);
+  const added = [];
+
+  for (const [slug, m] of Object.entries(next.municipalities || {})) {
+    for (const [code, sp] of Object.entries(m.sp || {})) {
+      if (!before.has(`m|${slug}|${code}`)) {
+        added.push({ scope: 'm', id: slug, code, date: sp.f });
+      }
+    }
+  }
+  for (const [id, a] of Object.entries(next.areas || {})) {
+    for (const [code, sp] of Object.entries(a.sp || {})) {
+      if (!before.has(`a|${id}|${code}`)) {
+        added.push({ scope: 'a', id, code, date: sp.f });
+      }
+    }
+  }
+  added.sort((x, y) => y.date.localeCompare(x.date));
+
+  return {
+    at: new Date().toISOString().slice(0, 10),
+    prevAt: prev.imported || null,
+    added,
+    // Species that were not on your Iceland list at all before this import.
+    lifers: (next.allSpecies || []).filter(c => !prevSpecies.has(c))
+  };
+}
+
+/**
+ * Every time a species was new for a region, newest first.
+ *
+ * One row per event rather than per tick: a bird that is new for a hverfi on
+ * the same day it is new for the sveitarfélag around it is one thing that
+ * happened, and listing it twice would make a first visit somewhere read as a
+ * flurry of activity. `areaSlug` maps an area id to its municipality, which the
+ * stored data does not record -- the caller has it from meta.json.
+ */
+function myFirsts(data, areaSlug) {
+  if (!data) return [];
+
+  // The per-region records include spuh, slash and hybrid rows -- "gull sp."
+  // is a real thing to have logged in a place, but it is not something you add
+  // to a life list, so it can be a regional first and never a lifer.
+  const countable = new Set(data.allSpecies || []);
+
+  // Your first date for each species anywhere in Iceland, which is what makes
+  // a row a lifer rather than a regional tick.
+  const national = new Map();
+  for (const m of Object.values(data.municipalities || {})) {
+    for (const [code, sp] of Object.entries(m.sp || {})) {
+      const at = national.get(code);
+      if (at === undefined || sp.f < at) national.set(code, sp.f);
+    }
+  }
+
+  const rows = new Map();       // code|date|slug -> row
+  const row = (code, date, slug) => {
+    const key = `${code}|${date}|${slug}`;
+    let r = rows.get(key);
+    if (!r) {
+      r = { code, date, slug, areas: [], newMun: false, lifer: false,
+            countable: countable.has(code) };
+      rows.set(key, r);
+    }
+    return r;
+  };
+
+  for (const [slug, m] of Object.entries(data.municipalities || {})) {
+    for (const [code, sp] of Object.entries(m.sp || {})) {
+      row(code, sp.f, slug).newMun = true;
+    }
+  }
+  for (const [id, a] of Object.entries(data.areas || {})) {
+    const slug = areaSlug ? areaSlug.get(id) : null;
+    if (!slug) continue;        // an area from a rebuild we no longer know
+    for (const [code, sp] of Object.entries(a.sp || {})) {
+      row(code, sp.f, slug).areas.push(id);
+    }
+  }
+
+  const out = [...rows.values()].sort((x, y) =>
+    y.date.localeCompare(x.date) || x.code.localeCompare(y.code) ||
+    x.slug.localeCompare(y.slug));
+
+  // The lifer badge goes on exactly one row per species. A day spent driving
+  // can put a bird's national first date on several municipalities at once,
+  // and "first in Iceland" three times over for one bird is a claim nobody
+  // made -- you added it to the list once. The remaining rows are still
+  // regional firsts, which is what they are.
+  const claimed = new Set();
+  for (const r of out) {
+    if (r.countable && national.get(r.code) === r.date && !claimed.has(r.code)) {
+      r.lifer = true;
+      claimed.add(r.code);
+    }
+  }
+  return out;
+}
+
 export {
   parseCSV, importCSV, getMyData, saveMyData, clearMyData, hasMyData,
   mySpeciesIn, myRecordsIn, myChecklistsIn,
   mySpeciesInArea, myRecordsInArea, myChecklistCountInArea,
-  myAreaSpeciesCounts, myDateRangeInArea, myLocalities, STORAGE_KEY
+  myAreaSpeciesCounts, myDateRangeInArea, myLocalities,
+  tickKeys, diffImports, myFirsts, STORAGE_KEY
 };

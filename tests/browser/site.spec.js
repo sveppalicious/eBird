@@ -278,3 +278,101 @@ test.describe('the personal import stays local', () => {
     expect(outbound, 'the export must never leave the browser').toEqual([]);
   });
 });
+
+test.describe('firsts: when a species was new somewhere', () => {
+  // A tiny export, then the same one with two extra rows. This is the real
+  // workflow -- upload, bird, upload again -- compressed into one test.
+  //
+  // The locality ids are real ones from locality_index.json, so the import
+  // resolves them to a hverfi as well as a sveitarfélag. Made-up ids fall back
+  // to a point-in-polygon municipality lookup and get no area at all, which
+  // would quietly leave half the feature untested.
+  const HEADER = 'Submission ID,Common Name,Scientific Name,Count,State/Province,' +
+    'Location ID,Location,Latitude,Longitude,Date,Time';
+  const MIDBORG = 'IS-1,L10020805,Tjörnin,64.1450,-21.9400';
+  const AKUREYRI = 'IS-6,L10029578,Akureyri,65.6835,-18.0878';
+
+  const base = [
+    HEADER,
+    `S1,Arctic Tern,Sterna paradisaea,3,${MIDBORG},2026-05-01,08:00`,
+    `S2,Common Eider,Somateria mollissima,5,${MIDBORG},2026-05-01,08:00`
+  ].join('\n');
+
+  const later = [
+    base,
+    `S3,Common Redshank,Tringa totanus,2,${MIDBORG},2026-07-28,09:00`,
+    `S4,Arctic Tern,Sterna paradisaea,9,${AKUREYRI},2026-07-30,10:00`
+  ].join('\n');
+
+  async function upload(page, csv, selector = '#csvfile') {
+    await page.locator(selector).setInputFiles({
+      name: 'MyEBirdData.csv', mimeType: 'text/csv', buffer: Buffer.from(csv)
+    });
+    await expect(page.locator('.stats')).toBeVisible();
+  }
+
+  test('the first upload reports no news, the second does', async ({ page }) => {
+    await page.goto('/#/me');
+    await upload(page, base);
+    // Nothing to compare against yet: "everything is new" is not news.
+    await expect(page.locator('.whatsnew')).toHaveCount(0);
+
+    await page.locator('#csvreplace').setInputFiles({
+      name: 'MyEBirdData.csv', mimeType: 'text/csv', buffer: Buffer.from(later)
+    });
+
+    const news = page.locator('.whatsnew');
+    await expect(news).toBeVisible();
+    await expect(news).toContainText('Since your previous upload');
+    // Species names follow the ÍS/EN switch, and ÍS is the default.
+    await expect(news).toContainText('Stelkur');          // new for Iceland
+    await expect(news).toContainText('Reykjavíkurborg');
+    await expect(news).toContainText('Akureyrarbær');     // Kría, new there only
+    // Both levels are counted: the hverfi ticks are the point of this site.
+    await expect(news).toContainText('hverfi');
+  });
+
+  test('the firsts list shows each species where it was new', async ({ page }) => {
+    await page.goto('/#/me');
+    await upload(page, later);
+
+    await page.getByRole('link', { name: 'Firsts', exact: true }).click();
+    await expect(page).toHaveURL(/#\/me\/firsts$/);
+
+    const rows = page.locator('tbody tr');
+    await expect(rows.first()).toContainText('30 júl 2026');
+    await expect(rows.first()).toContainText('Akureyrarbær');
+
+    // Four events: three species first seen in Reykjavík, and the Tern again
+    // in Akureyrarbær. The Tern being new for both the sveitarfélag and the
+    // hverfi on one day stays one row.
+    await expect(rows).toHaveCount(4);
+  });
+
+  test('the filters narrow it to lifers and to area ticks', async ({ page }) => {
+    await page.goto('/#/me');
+    await upload(page, later);
+    await page.getByRole('link', { name: 'Firsts', exact: true }).click();
+
+    const rows = page.locator('tbody tr');
+    await page.getByRole('button', { name: 'First in Iceland' }).click();
+    await expect(rows).toHaveCount(3);          // three species, three lifers
+    await expect(page.locator('.tick-lifer').first()).toBeVisible();
+
+    await page.getByRole('button', { name: 'Hverfi & póstnúmer' }).click();
+    await expect(rows).toHaveCount(4);
+
+    await page.getByRole('button', { name: 'All', exact: true }).click();
+    await expect(rows).toHaveCount(4);
+  });
+
+  test('a firsts row links to that species in that region', async ({ page }) => {
+    await page.goto('/#/me');
+    await upload(page, later);
+    await page.goto('/#/me/firsts');
+
+    await page.locator('tbody tr').first()
+      .getByRole('link', { name: 'Akureyrarbær' }).click();
+    await expect(page).toHaveURL(/#\/mun\/6000-akureyrarbaer\/species\/arcter$/);
+  });
+});

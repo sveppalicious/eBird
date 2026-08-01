@@ -83,6 +83,23 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
 }
 .callout strong { color: var(--ink); }
 
+/* What the last upload added. Same shape as the data notice, but this one is
+   news rather than a caveat, so it leans green. */
+.whatsnew { border-left-color: var(--green); background: #f1f7f3; }
+.whatsnew-list { margin: 8px 0 0; padding-left: 18px; }
+.whatsnew-list li { margin: 3px 0; }
+.whatsnew-list strong { color: var(--ink); }
+
+/* A species new to the whole Iceland list, not just to one region. Rare enough
+   in a mature list to be worth calling out, common enough on a first import
+   that it must not shout. */
+.tick-lifer {
+  display: inline-block; margin-left: 8px; padding: 1px 7px;
+  background: #e8f2ef; color: var(--green);
+  border-radius: 10px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;
+}
+
 .crumbs { font-size: 13px; color: var(--ink-faint); margin-bottom: 2px; }
 .mun-head { margin-bottom: 18px; }
 
@@ -241,6 +258,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
 .table .num-col { width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
 .strong { font-weight: 700; }
 .muted { color: var(--ink-faint); }
+.nowrap { white-space: nowrap; }
 
 /* Not scoped to .birdlist: the species-range and coverage tables use these too,
    and while .sp-meta was inline there the name and the year span ran together

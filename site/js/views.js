@@ -19,7 +19,8 @@ import {
   importCSV, getMyData, saveMyData, clearMyData, hasMyData,
   mySpeciesIn, myRecordsIn, myChecklistsIn,
   mySpeciesInArea, myRecordsInArea, myChecklistCountInArea,
-  myAreaSpeciesCounts, myDateRangeInArea, myLocalities
+  myAreaSpeciesCounts, myDateRangeInArea, myLocalities,
+  diffImports, myFirsts
 } from './mydata.js';
 
 // Must match OPEN_SEA_SLUG in R/00_config.R.
@@ -112,6 +113,24 @@ function areaMapValues(meta) {
 function areaMunNames(meta) {
   const name = new Map((meta.municipalities || []).map(m => [m.slug, m.name]));
   return new Map((meta.areas || []).map(a => [a.id, name.get(a.slug) || '']));
+}
+
+// area id -> its municipality slug. The stored personal data does not record
+// this (the id cannot be split apart -- "0000-reykjavikurborg-midborg" is
+// ambiguous), so it comes from meta.json, which the views have anyway.
+function areaSlugIndex(meta) {
+  return new Map((meta.areas || []).map(a => [a.id, a.slug]));
+}
+
+// One place where a file becomes stored data, so both the first upload and
+// "Replace file" record the same thing: what this import added over the last.
+async function importAndSave(text) {
+  const prev = getMyData();
+  const data = await importCSV(text);
+  const diff = diffImports(prev, data);
+  if (diff && diff.added.length) data.lastImport = diff;
+  const saved = saveMyData(data);
+  return { data, saved, diff };
 }
 
 // The other municipalities the same postal district reaches into. Named areas
@@ -1315,7 +1334,7 @@ async function viewAreas(root, slug) {
 // my data  (#/me)
 // -----------------------------------------------------------------------------
 
-async function viewMyData(root) {
+async function viewMyData(root, tab = 'overview') {
   root.appendChild(loading());
   const [meta, tax] = await Promise.all([loadMeta(), loadTaxonomy()]);
   root.textContent = '';
@@ -1335,7 +1354,163 @@ async function viewMyData(root) {
   function draw() {
     host.textContent = '';
     const data = getMyData();
-    host.appendChild(data ? summaryPane(data) : uploadPane());
+    if (!data) {
+      // Nothing to tab between until there is a file.
+      host.appendChild(uploadPane());
+      return;
+    }
+    host.appendChild(el('div', { class: 'tabs' },
+      el('a', { class: 'tab' + (tab === 'overview' ? ' is-active' : ''),
+                href: '#/me' }, 'Overview'),
+      el('a', { class: 'tab' + (tab === 'firsts' ? ' is-active' : ''),
+                href: '#/me/firsts' }, 'Firsts')));
+    host.appendChild(tab === 'firsts' ? firstsPane(data) : summaryPane(data));
+  }
+
+  // --- the feed of regional firsts ------------------------------------------
+
+  // One row: what was new, when, and where. The place cell names the
+  // sveitarfélag when the species was new for it, and every area it was new
+  // for, each linking to that species' page in that region.
+  function firstsRows(data) {
+    const areaSlug = areaSlugIndex(meta);
+    const areaInfo = new Map((meta.areas || []).map(a => [a.id, a]));
+    const munName = new Map(meta.municipalities.map(m => [m.slug, m.name]));
+    return myFirsts(data, areaSlug).map(r => ({
+      ...r,
+      munName: munName.get(r.slug) || r.slug,
+      areaInfo: r.areas.map(id => areaInfo.get(id)).filter(Boolean)
+    }));
+  }
+
+  function firstsTable(rows) {
+    return el('div', { class: 'table-wrap' },
+      el('table', { class: 'table birdlist' },
+        el('thead', {}, el('tr', {},
+          el('th', {}, 'Date'),
+          el('th', {}, 'Species'),
+          el('th', {}, 'New for'))),
+        el('tbody', {}, rows.map(r => {
+          const t = tax.get(r.code);
+          const where = [];
+          if (r.newMun) {
+            where.push(el('a', { href: `#/mun/${r.slug}/species/${r.code}` }, r.munName));
+          }
+          for (const a of r.areaInfo) {
+            if (where.length) where.push(el('span', { class: 'muted', text: ' · ' }));
+            where.push(el('a', {
+              href: `#/mun/${a.slug}/area/${a.code}/species/${r.code}`
+            }, a.label));
+          }
+          // An area-only row still has to say which sveitarfélag it is in:
+          // "Miðborg" on its own means nothing on a national list.
+          if (!r.newMun && r.areaInfo.length) {
+            where.push(el('span', { class: 'muted', text: ` (${r.munName})` }));
+          }
+          // spuh, slash and hybrid rows are dimmed the way they are everywhere
+          // else on the site: a real thing to have logged in a place, but not
+          // something that goes on a list.
+          return el('tr', { class: r.countable ? '' : 'is-other' },
+            el('td', { class: 'muted nowrap', text: fmtDate(isoToDay(r.date), state.lang) }),
+            el('td', {},
+              el('a', { class: 'sp-name', href: `#/species/${r.code}` },
+                spName(t, state.lang)),
+              el('span', { class: 'sp-sec', text: ' ' + spSecondary(t, state.lang) }),
+              r.lifer ? el('span', { class: 'tick-lifer', title:
+                'The first time you recorded this species anywhere in Iceland',
+                text: 'first in Iceland' }) : null),
+            el('td', {}, where));
+        }))));
+  }
+
+  function firstsPane(data) {
+    const wrap = el('div', {});
+    const all = firstsRows(data);
+
+    if (!all.length) {
+      wrap.appendChild(el('p', { class: 'empty', text:
+        'No records placed in a sveitarfélag yet.' }));
+      return wrap;
+    }
+
+    wrap.appendChild(el('p', { class: 'lede' },
+      `Every time a species was new somewhere: ${fmtNum(all.length)} firsts ` +
+      `across ${fmtNum(new Set(all.map(r => r.slug)).size)} sveitarfélög. ` +
+      `A species counts again for each sveitarfélag, hverfi and póstnúmer, ` +
+      `which is what makes a well-birded country stay interesting.`));
+
+    let filter = 'all', page = 0;
+    const body = el('div', {});
+
+    const keep = r =>
+      filter === 'all' ? true
+      : filter === 'lifer' ? r.lifer
+      : filter === 'mun' ? r.newMun
+      : r.areaInfo.length > 0;
+
+    // Built once, outside redraw: the pills would otherwise be rebuilt under
+    // the pointer, and the sort/filter highlight would drift out of step.
+    wrap.appendChild(el('div', { class: 'controls' },
+      pills([['all', 'All'], ['lifer', 'First in Iceland'],
+             ['mun', 'Sveitarfélag'], ['area', 'Hverfi & póstnúmer']],
+        filter, v => { filter = v; page = 0; redraw(); })));
+    wrap.appendChild(body);
+
+    function redraw() {
+      body.textContent = '';
+      const rows = all.filter(keep);
+      const start = page * PAGE;
+      body.appendChild(firstsTable(rows.slice(start, start + PAGE)));
+      body.appendChild(el('div', { class: 'pager' },
+        el('button', { class: 'pill', disabled: page === 0 || null,
+                       onclick: () => { page--; redraw(); } }, '‹ Previous'),
+        el('span', { class: 'pager-info', text:
+          `${rows.length ? start + 1 : 0}–${Math.min(start + PAGE, rows.length)} of ${fmtNum(rows.length)}` }),
+        el('button', { class: 'pill', disabled: start + PAGE >= rows.length || null,
+                       onclick: () => { page++; redraw(); } }, 'Next ›')));
+    }
+    redraw();
+    return wrap;
+  }
+
+  // --- what the last upload added -------------------------------------------
+
+  function whatsNewPane(data) {
+    const li = data.lastImport;
+    if (!li || !li.added || !li.added.length) return null;
+
+    const areaInfo = new Map((meta.areas || []).map(a => [a.id, a]));
+    const munName = new Map(meta.municipalities.map(m => [m.slug, m.name]));
+    const nMun = li.added.filter(a => a.scope === 'm').length;
+    const nArea = li.added.length - nMun;
+
+    const parts = [];
+    if (li.lifers.length) {
+      parts.push(`${fmtNum(li.lifers.length)} new for your Iceland list`);
+    }
+    if (nMun) parts.push(`${fmtNum(nMun)} new for a sveitarfélag`);
+    if (nArea) parts.push(`${fmtNum(nArea)} new for a hverfi or póstnúmer`);
+
+    const preview = li.added.slice(0, 8).map(a => {
+      const t = tax.get(a.code);
+      const where = a.scope === 'm'
+        ? munName.get(a.id) || a.id
+        : (areaInfo.get(a.id) || {}).label || a.id;
+      return el('li', {},
+        el('span', { class: 'muted', text: fmtDate(isoToDay(a.date), state.lang) + ' — ' }),
+        el('strong', { text: spName(t, state.lang) }),
+        el('span', { text: ' in ' + where }));
+    });
+
+    return el('div', { class: 'callout whatsnew' },
+      el('strong', { text: `Since your previous upload${li.prevAt ? ` (${li.prevAt})` : ''}: ` }),
+      el('span', { text: parts.join(', ') + '.' }),
+      el('ul', { class: 'whatsnew-list' }, preview),
+      li.added.length > preview.length
+        ? el('p', { class: 'note' },
+            el('a', { href: '#/me/firsts' },
+              `See all ${fmtNum(li.added.length)} in the firsts list →`))
+        : el('p', { class: 'note' }, el('a', { href: '#/me/firsts' }, 'All firsts →')));
   }
 
   // --- privacy notice, restated wherever the file is asked for ---
@@ -1381,8 +1556,7 @@ async function viewMyData(root) {
       status.appendChild(loading(`Reading ${file.name}…`));
       try {
         const text = await file.text();
-        const data = await importCSV(text);
-        const saved = saveMyData(data);
+        const { saved } = await importAndSave(text);
         if (!saved) {
           status.textContent = '';
           status.appendChild(el('p', { class: 'note' },
@@ -1427,6 +1601,11 @@ async function viewMyData(root) {
         `${s.firstDate} – ${s.lastDate}`)
     ));
 
+    // Straight after the headline, because it is the thing you came back to
+    // find out: what did that upload actually add?
+    const news = whatsNewPane(data);
+    if (news) wrap.appendChild(news);
+
     wrap.appendChild(el('div', { class: 'controls' },
       el('button', {
         class: 'pill',
@@ -1441,7 +1620,7 @@ async function viewMyData(root) {
           const f = e.target.files[0];
           if (!f) return;
           try {
-            saveMyData(await importCSV(await f.text()));
+            await importAndSave(await f.text());
             draw();
           } catch (err) { alert(String(err.message || err)); }
         }

@@ -12,7 +12,8 @@ const root = document.getElementById('view');
 // municipality ones they extend.
 const routes = [
   [/^#?\/?$/,                                  () => viewHome(root)],
-  [/^#\/me$/,                                  () => viewMyData(root)],
+  [/^#\/me$/,                                  () => viewMyData(root, 'overview')],
+  [/^#\/me\/firsts$/,                          () => viewMyData(root, 'firsts')],
   [/^#\/species$/,                             () => viewSpeciesIndex(root)],
   [/^#\/species\/([^/]+)$/,                    (m) => viewSpeciesRange(root, m[1])],
   [/^#\/mun\/([^/]+)\/areas$/,                 (m) => viewAreas(root, m[1])],

@@ -23,6 +23,7 @@ It works in both directions:
 | `#/species` | every taxon recorded in Iceland, searchable |
 | `#/species/{code}` | **which sveitarfélög that taxon has been found in**, as a choropleth plus a table |
 | `#/me` | upload your own eBird export and see it on the same map |
+| `#/me/firsts` | **every time a species was new for a region**, newest first |
 
 ## Your own data
 
@@ -211,6 +212,38 @@ At roughly 48 MB, `site/data/` is well inside the 1 GB Pages limit, but it is
 committed data and every quarterly rebuild adds another copy to history. If the
 repo becomes unwieldy after a few years, the fix is to publish `site/` from an
 orphan branch rather than to rewrite history.
+
+## Firsts
+
+`#/me/firsts` is the reason to keep uploading: every time a species was new for
+a sveitarfélag, hverfi or póstnúmer, newest first. For this export that is
+**1,618 firsts across 41 sveitarfélög** — a species counts again at each level,
+which is what keeps a well-birded country interesting.
+
+Three decisions worth recording, each of which produced a wrong number first.
+
+**One row per event, not per tick.** A bird that is new for a hverfi on the same
+day it is new for the sveitarfélag around it is one thing that happened; listing
+it twice made a first visit somewhere read as a flurry of activity. Rows are
+keyed on `(species, date, sveitarfélag)` and the areas are collected into it.
+
+**The "first in Iceland" badge appears once per species.** A day out by car can
+put a bird's national first date on several municipalities at once, and the
+badge was appearing on each — 126 of them against a 105-species list. The other
+rows are still regional firsts, which is what they are.
+
+**Only species get the badge.** The per-region records also hold spuh, slash and
+hybrid rows: "gull sp." is a real thing to have logged in a place, but it is not
+something you add to a life list, and eBird does not count it either. With that
+fixed the lifer count is exactly 105 — one per species on the list, which is the
+cross-check that says the arithmetic is right.
+
+On upload, `diffImports` compares the new file against the one it replaces and
+the overview leads with what changed. It is a **set difference, never a date
+cutoff**: eBird exports get backfilled — an old notebook typed up, a shared
+checklist accepted late — and those are new to your list even though the
+sighting is not new. A first upload reports nothing, because "everything is new"
+is not news.
 
 ## Small screens
 
