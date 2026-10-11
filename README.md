@@ -50,7 +50,7 @@ Identical at all three levels: breadcrumb, four stats, the map, then
   which includes the 16 sveitarfélög covered by a single postal area: one child
   is the same place again under another heading.
 - **Checklists** — every checklist, with a Find box. The country shows the
-  latest 2,000 of 235,811 and says so.
+  latest 2,000 of 246,212 and says so.
 - **Activity** — species and checklists per year: how coverage has grown, and
   which years are too thin to trust.
 - **Firsts** — in *My data* only; see below.
@@ -200,7 +200,7 @@ The `COUNTY` and `COUNTY CODE` columns are **empty on all 2,002,096 Iceland rows
 of the eBird Basic Dataset — eBird has no municipality layer for Iceland to
 serve. But every row carries a latitude and longitude, and those coordinates
 hang off `LOCALITY ID`, not off individual observations. So the whole problem
-reduces to **40,770 point-in-polygon tests**, not two million.
+reduces to **43,262 point-in-polygon tests**, not two million.
 
 The boundaries come from Landmælingar Íslands over their live WFS
 (`IS_50V:mork_sveitarf_svaedi`, 61 municipalities, dataset version 2026-07-06).
@@ -284,7 +284,7 @@ data/sci_index.json, locality_index.json    lookups for a personal import
 checklists with the species, how many of those were complete, the effort to
 divide by (complete checklists per year and month), and each species' first and
 last day in each year. Charts, year lists and arrival dates are all read from
-it. There are 644,157 cells across the 250 regions, and `run_all.R` checks that
+it. There are 659,943 cells across the 250 regions, and `run_all.R` checks that
 every one folds back to the summary beside it — per species the cells sum to its
 checklist count, and the effort cells to the region's.
 
@@ -339,7 +339,7 @@ export. Both are gitignored, `*.csv` is refused repo-wide, and the personal
 import has no upload path at all — it is parsed in the browser and kept in
 that browser's IndexedDB.
 
-At roughly 72 MB, `site/data/` is well inside the 1 GB Pages limit — and the
+At roughly 78 MB, `site/data/` is well inside the 1 GB Pages limit — and the
 cubes and summaries that make up the growth compress about six to one in
 transit — but it is committed data and every rebuild adds another copy to
 history. If the
@@ -462,7 +462,7 @@ Matching eBird's own rules, so the totals are comparable:
   taxa (Mute Swan, Eurasian Kestrel, Graylag Goose, Mallard, Mandarin Duck,
   Carrion Crow, Black Kite) have escapee and wild records side by side. One
   countable record makes the taxon countable in that sveitarfélag.
-- **Shared checklists count once.** 44,397 of 280,208 submissions are duplicate
+- **Shared checklists count once.** 46,987 of 293,199 submissions are duplicate
   copies of a group outing. One canonical submission is kept per group, so that
   every row still links to a real `ebird.org/checklist/S…` page.
 - **Unvetted records are excluded**, matching what eBird itself publishes. The
@@ -502,7 +502,9 @@ Two of these have caveats worth knowing:
 
 ## How good is the geometry?
 
-Of the 40,770 localities:
+Of the 40,770 localities in the June 2026 release (the figures below; August has
+43,262 in the same proportions — 38,564 inside, 2,846 coastal, 1,062 offshore,
+790 open sea):
 
 | | localities | checklists | |
 |---|---:|---:|---|
@@ -518,9 +520,13 @@ localities) is the west shore of Hrútafjörður, which LMI puts in Húnaþing v
 while eBird calls it Vestfirðir: a real disagreement between the two authorities,
 not a placement error. LMI is authoritative on municipalities.
 
-**Against eBird's published totals.** Aggregating back up to IS-1 gives **221
-species** where eBird's site showed **224** on 25 Jul 2026 — the expected small
-shortfall, since this EBD is the June 2026 release and ends 30 Jun 2026.
+**Against eBird's published totals.** With the June 2026 release, aggregating
+back up to IS-1 gave **221 species** where eBird's site showed **224** on
+25 Jul 2026 — the expected small shortfall for a snapshot ending 30 Jun. The
+August release gives 222. The release also ships its not-yet-reviewed records
+in a separate `_unvetted.txt` (91 in June, 1,104 in August); they are left out,
+as eBird leaves them off its own lists, and `INCLUDE_UNVETTED` in
+`R/00_config.R` folds them in.
 
 ## Known limits
 
@@ -547,10 +553,10 @@ release ending with the previous month. The site says so on the front page and
 in every footer, because otherwise a birder who cannot find last week's rarity
 concludes the site is broken rather than out of date. The cut-off shown is read
 from `meta.dateRange[1]`, not written into the text, so it stays true after
-every rebuild; today it reads 30 Jun 2026.
+every rebuild; today it reads 31 Aug 2026.
 
-eBird Basic Dataset. Version: EBD_relJun-2026. Cornell Lab of Ornithology,
-Ithaca, New York. Jun 2026. Used under the
+eBird Basic Dataset. Version: EBD_relAug-2026. Cornell Lab of Ornithology,
+Ithaca, New York. Aug 2026. Used under the
 [eBird terms of use](https://www.birds.cornell.edu/home/ebird-api-terms-of-use/).
 
 Municipality boundaries: IS 50V, Landmælingar Íslands, CC BY 4.0.

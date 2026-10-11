@@ -154,10 +154,8 @@ for (i in seq_len(nrow(per))) {
 }
 msg("    Iceland total: ", obs[countable == TRUE, data.table::uniqueN(speciesCode)])
 msg("")
-msg("  Reference: eBird showed Hofudborgarsvaedi (IS-1) at 224 species on ",
-    "25 Jul 2026.")
-msg("  Ours should be at or a little below that -- this EBD is the ",
-    EBD_RELEASE, " snapshot, which ends 30 Jun 2026.")
+msg("  Ours should be at or a little below ebird.org -- this EBD is the ",
+    EBD_RELEASE, " snapshot, which ends ", format(max(chk$date), "%d %b %Y"), ".")
 
 msg("")
 msg("Done in ", round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1),

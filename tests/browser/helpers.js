@@ -1,6 +1,21 @@
 // Shared by the browser specs.
 
 import { expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+// The figures a test compares the page against come from the data being
+// served, never from a number typed into the test: the data is rebuilt with
+// every EBD release, and a refresh must not need the tests rewritten.
+const DATA = new URL('../../site/data/', import.meta.url);
+export const meta = JSON.parse(readFileSync(new URL('meta.json', DATA), 'utf8'));
+const regions = JSON.parse(readFileSync(new URL('regions.json', DATA), 'utf8')).regions;
+export const region = id => regions.find(r => r.id === id);
+export const num = n => n.toLocaleString('de-DE');
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const cutoff = (() => {
+  const d = new Date(meta.dateRange[1] * 86400000);
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+})();
 
 // A point that actually lies inside a given shape. Bounding-box centres miss
 // constantly here: Icelandic municipalities are fjord-shaped.

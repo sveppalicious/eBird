@@ -6,6 +6,7 @@
 // was a bird list computed another way. Species pages split the same way.
 
 import { test, expect } from '@playwright/test';
+import { meta, region, num, cutoff } from './helpers.js';
 
 const LEVELS = [
   ['Iceland', '', 'Ísland'],
@@ -46,7 +47,7 @@ test.describe('a region page is the same page at every level', () => {
 
   test('the Areas tab is there exactly when there is a level below', async ({ page }) => {
     await page.goto('/#/');
-    await expect(page.locator('.tab[data-tab="areas"]')).toHaveText('Areas (62)');
+    await expect(page.locator('.tab[data-tab="areas"]')).toHaveText(`Areas (${meta.totals.municipalities})`);
     await page.goto('/#/r/0000-reykjavikurborg');
     await expect(page.locator('.tab[data-tab="areas"]')).toHaveText('Areas (13)');
     await page.goto('/#/r/0000-reykjavikurborg-midborg');
@@ -232,7 +233,7 @@ test.describe('the species list', () => {
 test.describe('checklists', () => {
   test('the country shows the latest and says so', async ({ page }) => {
     await page.goto('/#/?tab=checklists');
-    await expect(page.locator('.tab-body .note')).toContainText('latest 2.000 of 235.811');
+    await expect(page.locator('.tab-body .note')).toContainText(`latest ${num(meta.countryChecklists)} of ${num(meta.totals.checklists)}`);
     // Only here does a location need its sveitarfélag beside it.
     await expect(page.locator('.tab-body thead')).toContainText('Region');
   });
@@ -249,7 +250,7 @@ test.describe('checklists', () => {
 
   test('an area shows only its own checklists', async ({ page }) => {
     await page.goto('/#/r/0000-reykjavikurborg-midborg?tab=checklists');
-    await expect(page.locator('.tab-body .controls')).toContainText('7.670 checklists');
+    await expect(page.locator('.tab-body .controls')).toContainText(`${num(region('0000-reykjavikurborg-midborg').checklists)} checklists`);
   });
 });
 
@@ -293,20 +294,22 @@ test.describe('search, language and the odd corners', () => {
     await expect(page).toHaveURL(/#\/r\/6100-nordurthing-660$/);
   });
 
-  test('an area nobody has birded still has a page', async ({ page }) => {
-    // Once drawn on the map, clickable, and missing from the data.
-    await page.goto('/#/r/8719-grimsnes-og-grafningshreppur-806');
+  test('the least-birded area still has a page', async ({ page }) => {
+    // 806 in Grímsnes- og Grafningshreppur had no checklists at all for years,
+    // and was once drawn on the map, clickable, and missing from the data.
+    const id = '8719-grimsnes-og-grafningshreppur-806';
+    await page.goto('/#/r/' + id);
     await expect(page.locator('h1')).toHaveText('806 Selfoss, dreifbýli');
-    await expect(page.locator('.stats .stat').first()).toContainText('0');
+    await expect(page.locator('.stats .stat-value').first()).toHaveText(num(region(id).species));
     await expect(page.locator('.error')).toHaveCount(0);
   });
 
   test('the data cut-off is stated on the front page and in every footer', async ({ page }) => {
     await page.goto('/#/');
     await expect(page.locator('.callout')).toContainText('eBird Basic Dataset');
-    await expect(page.locator('.callout')).toContainText('30 Jun 2026');
+    await expect(page.locator('.callout')).toContainText(cutoff);
     await page.goto('/#/s/arcter');
-    await expect(page.locator('.foot')).toContainText('Records through 30 Jun 2026');
+    await expect(page.locator('.foot')).toContainText(`Records through ${cutoff}`);
   });
 
   test('an unknown region or page is a handled miss, not a crash', async ({ page }) => {

@@ -2,7 +2,7 @@
 // browser.
 
 import { test, expect } from '@playwright/test';
-import { BASE_CSV, LATER_CSV, upload, importFile } from './helpers.js';
+import { BASE_CSV, LATER_CSV, upload, importFile, region, num } from './helpers.js';
 
 test.describe('bringing your own export in', () => {
   test('nothing about the file leaves the browser', async ({ page }) => {
@@ -51,9 +51,9 @@ test.describe('bringing your own export in', () => {
     await expect(page.locator('.dropzone')).toBeVisible();
     await expect(page.locator('[data-source="all"]')).toHaveAttribute('aria-pressed', 'true');
     await page.goto('/#/');
-    await expect(page.locator('.stats .stat').first()).toContainText('412');
+    await expect(page.locator('.stats .stat').first()).toContainText(num(region('IS').species));
     await page.reload();
-    await expect(page.locator('.stats .stat').first()).toContainText('412');
+    await expect(page.locator('.stats .stat').first()).toContainText(num(region('IS').species));
   });
 
   test('a file that is not an eBird export is refused in plain words', async ({ page }) => {
@@ -124,7 +124,7 @@ test.describe('your data on the same pages', () => {
     await page.goto('/#/r/0000-reykjavikurborg');
     await expect(page.locator('.stats .stat').first()).toContainText('3');
     await page.locator('[data-source="all"]').click();
-    await expect(page.locator('.stats .stat').first()).toContainText('173');
+    await expect(page.locator('.stats .stat').first()).toContainText(num(region('0000-reykjavikurborg').species));
     await expect(page.locator('.tab[data-tab="firsts"]')).toHaveCount(0);
   });
 });

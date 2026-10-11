@@ -244,11 +244,15 @@ describe('cubes', () => {
     }
   });
 
-  test('an empty region has an empty cube, not a missing one', () => {
-    const empty = regions.find(r => r.checklists === 0);
-    assert.ok(empty, 'expected at least one area nobody has birded');
-    const cube = read(join('region', empty.id, 'cube.json'));
-    for (const k of [...COLS, 'sp', 'ey']) assert.deepEqual(cube[k], [], `${empty.id} ${k}`);
+  test('an empty region has an empty cube, not a missing one', (t) => {
+    // Until the August 2026 release one area had never been birded. Whether
+    // any is empty now depends on the data, so this checks them when there are.
+    const empty = regions.filter(r => r.checklists === 0);
+    if (!empty.length) return t.skip('every region has checklists in this release');
+    for (const r of empty) {
+      const cube = read(join('region', r.id, 'cube.json'));
+      for (const k of [...COLS, 'sp', 'ey']) assert.deepEqual(cube[k], [], `${r.id} ${k}`);
+    }
   });
 });
 

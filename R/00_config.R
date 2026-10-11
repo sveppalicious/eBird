@@ -23,7 +23,7 @@ if (!dir.exists(file.path(PROJ_DIR, "R"))) {
        "Currently in: ", PROJ_DIR)
 }
 
-EBD_RELEASE <- "relJun-2026"
+EBD_RELEASE <- "relAug-2026"
 EBD_DIR     <- file.path(PROJ_DIR, sprintf("ebd_IS_unv_smp_%s", EBD_RELEASE))
 
 EBD_OBS_FILE      <- file.path(EBD_DIR, sprintf("ebd_IS_unv_smp_%s.txt", EBD_RELEASE))
