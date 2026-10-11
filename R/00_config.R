@@ -35,9 +35,9 @@ WORK_DIR <- file.path(PROJ_DIR, "work")
 SITE_DIR <- file.path(PROJ_DIR, "site")
 DATA_DIR <- file.path(SITE_DIR, "data")
 GEO_DIR  <- file.path(DATA_DIR, "geo")
-MUN_DIR  <- file.path(DATA_DIR, "mun")
+REGION_DIR <- file.path(DATA_DIR, "region")
 
-for (d in c(WORK_DIR, DATA_DIR, GEO_DIR, MUN_DIR)) {
+for (d in c(WORK_DIR, DATA_DIR, GEO_DIR, REGION_DIR)) {
   if (!dir.exists(d)) dir.create(d, recursive = TRUE)
 }
 

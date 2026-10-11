@@ -61,13 +61,21 @@ stopifnot(!anyNA(obs$mun_slug))
 msg("Observations:       ", format(nrow(obs), big.mark = ","),
     " rows after rollup and group collapse, none unplaced  OK")
 
-# The exported payloads must add up to the tables they came from.
+# The exported payloads must add up to the tables they came from, at every
+# level: the country is the whole table, the sveitarfelog partition it, and the
+# areas partition each sveitarfelag.
 meta <- jsonlite::fromJSON(file.path(DATA_DIR, "meta.json"))
+reg  <- data.table::as.data.table(
+  jsonlite::fromJSON(file.path(DATA_DIR, "regions.json"))$regions)
+country <- reg[kind == "country"]
+muns    <- reg[kind %chin% c("sveitarfelag", "sea")]
+subs    <- reg[kind %chin% c("hverfi", "postnumer")]
 stopifnot(
-  sum(meta$municipalities$checklists)   == nrow(chk),
-  sum(meta$municipalities$observations) == nrow(obs)
+  nrow(country) == 1L,
+  country$checklists == nrow(chk), country$observations == nrow(obs),
+  sum(muns$checklists) == nrow(chk), sum(muns$observations) == nrow(obs)
 )
-msg("meta.json:          municipality totals match the tables  OK")
+msg("regions.json:       country and sveitarfelag totals match the tables  OK")
 
 # The fourth level must tile each municipality exactly: areas are built as the
 # intersection of the two layers, so anything else means a locality slipped
@@ -75,9 +83,9 @@ msg("meta.json:          municipality totals match the tables  OK")
 areas <- readRDS(file.path(WORK_DIR, "areas.rds"))
 placed <- chk[!is.na(area_id)]
 stopifnot(nrow(placed) + chk[mun_slug == OPEN_SEA_SLUG, .N] == nrow(chk))
-per_mun <- placed[, .(a = .N), by = mun_slug]
-tot_mun <- chk[mun_slug != OPEN_SEA_SLUG, .N, by = mun_slug]
-stopifnot(all.equal(per_mun[order(mun_slug)]$a, tot_mun[order(mun_slug)]$N))
+tiled <- merge(subs[, .(a = sum(checklists)), by = .(id = parent)],
+               muns[, .(id, m = checklists)], by = "id")
+stopifnot(all(tiled$a == tiled$m))
 kind <- stats::setNames(areas$kind, areas$area_id)
 used <- unique(placed$area_id)
 msg("Sub-areas:          ", length(used), " with checklists, of ", nrow(areas),
@@ -85,19 +93,13 @@ msg("Sub-areas:          ", length(used), " with checklists, of ", nrow(areas),
 msg("                    ", sum(kind[used] == "hverfi"), " named neighbourhoods, ",
     sum(kind[used] == "postnumer"), " postal areas")
 
-# Every area drawn on the map has to exist in the municipality that owns it,
-# whether or not anyone has birded it: the map makes them clickable, so an area
-# missing from summary.json is a link to a page that cannot render.
-for (s in unique(areas$slug)) {
-  f <- file.path(MUN_DIR, s, "summary.json")
-  if (!file.exists(f)) next
-  listed <- length(jsonlite::fromJSON(f, simplifyVector = FALSE)$areas)
-  built  <- sum(areas$slug == s)
-  if (listed != built) {
-    stop("summary.json for ", s, " lists ", listed, " areas, geometry has ", built)
-  }
-}
-msg("                    every built area is listed by its municipality  OK")
+# Every area drawn on the map has to exist as a region, whether or not anyone
+# has birded it: the map makes them clickable, so an area with no files is a
+# link to a page that cannot render.
+stopifnot(setequal(subs$id, areas$area_id),
+          all(file.exists(file.path(REGION_DIR, reg$id, "summary.json"))),
+          all(file.exists(file.path(REGION_DIR, reg$id, "cube.json"))))
+msg("                    every built area is a region with its files  OK")
 
 # A postal district can straddle a municipality boundary, so the same label can
 # legitimately appear more than once. Report it rather than letting it look like
@@ -108,6 +110,31 @@ if (length(dup)) {
   msg("                    ", length(dup), " postal districts cross a municipality ",
       "boundary and are split (", sum(dup), " areas)")
 }
+
+# The cube is the same data cut by year and month, so it has to fold back up to
+# the summary beside it: per species, cells sum to its checklist count; and the
+# effort cells sum to the region's checklists. Checked at all three levels.
+check_cube <- function(id) {
+  cube <- jsonlite::fromJSON(file.path(REGION_DIR, id, "cube.json"))
+  sm   <- jsonlite::fromJSON(file.path(REGION_DIR, id, "summary.json"))
+  st   <- sm$stats
+  if (length(cube$si)) {
+    per <- tapply(cube$n, cube$si, sum)
+    perc <- tapply(cube$c, cube$si, sum)
+    stopifnot(all(cube$sp == sm$species$c),
+              all(unname(per)  == sm$species$k),
+              all(unname(perc) == sm$species$kc),
+              all(cube$c <= cube$n))
+  }
+  # An empty region writes `[]`, which reads back as a list rather than a
+  # numeric vector -- 806 in Grimsnes- og Grafningshreppur is one.
+  num <- function(v) as.numeric(unlist(v))
+  stopifnot(sum(num(cube$en)) == st$checklists, sum(num(cube$ec)) == st$complete)
+  invisible(length(cube$si))
+}
+cells <- vapply(reg$id, check_cube, numeric(1))
+msg("Cubes:              ", format(sum(cells), big.mark = ","),
+    " cells fold back to the summaries in all ", nrow(reg), " regions  OK")
 
 # Species counts per eBird region, for comparison against ebird.org. Ours should
 # be at or just below the live site: this EBD is the ", EBD_RELEASE, " snapshot.
