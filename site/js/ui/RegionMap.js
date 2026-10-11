@@ -21,7 +21,6 @@ const L = window.L;
 // eBird's ramp: pale yellow through orange to red.
 const RAMP = ['#f5e79e', '#f2d180', '#eeb46c', '#e89463', '#e2705f', '#d94a54'];
 const EMPTY = '#e6e8e6';
-const CONTEXT = '#e4eaec';
 
 function rampColor(t) {
   // NaN fails every comparison below and would index RAMP with NaN.
@@ -45,7 +44,7 @@ function create(geo, areaGeo) {
   // user on whatever is above it.
   const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   const map = L.map(el, {
-    attributionControl: false, zoomControl: true,
+    attributionControl: false, zoomControl: false,   // wheel, pinch and double-click zoom
     zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 90,
     minZoom: 5, maxZoom: 14,
     // No maxBounds: on a wide, short frame the view at low zoom is wider than
@@ -71,7 +70,7 @@ function create(geo, areaGeo) {
       layer.isArea = isArea;
       layers.set(id, layer);
       layer.on('click', () => M.onSelect && M.onSelect(id));
-      layer.on('mouseover', () => layer.setStyle({ weight: 2.2, color: '#2f5468' }));
+      layer.on('mouseover', () => { if (layer.options.opacity !== 0) layer.setStyle({ weight: 1.6, color: '#2f5468' }); });
       layer.on('mouseout', () => M.restyle(id));
       layer.bindTooltip(() => M.tip(id), { sticky: true, direction: 'top', offset: [0, -6], className: 'map-tip' });
       // The tests, and anyone with a screen reader, find a shape by its id.
@@ -115,13 +114,22 @@ function update(m, { tree, regionId, values, max, points, showPoints, onSelect, 
     if (focus.has(id)) {
       const v = values.get(id);
       const sel = id === selected;
-      return { fillColor: v ? rampColor(v / max) : EMPTY, fillOpacity: 1,
-               color: sel ? '#2f5468' : '#fff', weight: sel ? 2.6 : 1 };
+      return { fillColor: v ? rampColor(v / max) : EMPTY, fillOpacity: 1, opacity: 1,
+               color: sel ? '#2f5468' : '#fff', weight: sel ? 1.6 : 1 };
     }
     if (isMun && areasShown && id === holder) {
-      return { fillOpacity: 0, color: '#2f5468', weight: 1.6 };
+      // The sveitarfelag whose areas are on show is not drawn at all. Its
+      // outline used to be, and since the areas are cut a little short of it,
+      // every skerry they do not cover showed up as an empty dark ring.
+      return { fillOpacity: 0, opacity: 0 };
     }
-    return { fillColor: CONTEXT, fillOpacity: 1, color: '#fff', weight: 1 };
+    // Everything around the subject is coloured too, the way eBird's map does
+    // it -- grey neighbours read as "no records" -- but paler, so the eye
+    // still goes to the region the page is about. Their counts are capped at
+    // this map's scale: a whole sveitarfelag will always outnumber a hverfi.
+    const v = values.get(id);
+    return { fillColor: v ? rampColor(Math.min(1, v / max)) : EMPTY, fillOpacity: 0.45,
+             opacity: 1, color: '#fff', weight: 1 };
   };
   m.restyle = id => { const l = m.layers.get(id); if (l) l.setStyle(styleOf(id)); };
   m.munGroup.eachLayer(l => l.setStyle(styleOf(l.regionId)));
@@ -210,23 +218,28 @@ function RegionMap({ regionId, values, label, onSelect, describe }) {
     // and rebuilding every locality dot each time would be wasted work.
   }, [tree, regionId, values, points, showPoints, t]);
 
+  // One level up, as on eBird's own map. Selecting the parent is all it is, so
+  // on a species page it widens the scope and stays on the species.
+  const parent = tree.parent(regionId);
+
   return html`<div class="map-wrap">
     <div class="map-frame">
       ${/* Its own host, with no children of Preact's: the Leaflet element is
            moved in and out by hand and must not be diffed. */''}
       <div class="map-host" ref=${host}></div>
       <div class="map-controls">
-        <button type="button" class="map-btn" onClick=${() => M && M.fitTo()} title=${t('map.reset')}>⤢</button>
+        ${parent ? html`<button type="button" class="map-btn map-zoom-out"
+          onClick=${() => onSelect(parent.id)}>${t('map.zoomOut')}</button>` : null}
         ${points && points.length ? html`<button type="button"
           class=${'map-btn' + (showPoints ? ' is-active' : '')} aria-pressed=${showPoints ? 'true' : 'false'}
           onClick=${() => setShowPoints(!showPoints)}>◍ ${t('map.points', { n: fmtNum(points.length) })}</button>` : null}
       </div>
-    </div>
-    <div class="map-legend">
-      <span>0</span>
-      <span class="legend-bar" style=${`background: linear-gradient(90deg, ${RAMP.join(', ')})`}></span>
-      <span>${fmtNum(max)}</span>
-      <span class="legend-label">${label}</span>
+      <div class="map-legend">
+        <span>0</span>
+        <span class="legend-bar" style=${`background: linear-gradient(90deg, ${RAMP.join(', ')})`}></span>
+        <span>${fmtNum(max)}</span>
+        <span class="legend-label">${label}</span>
+      </div>
     </div>
   </div>`;
 }

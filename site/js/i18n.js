@@ -113,7 +113,7 @@ const STRINGS = {
     'ebd.body': 'EBD kemur út mánaðarlega, þann 15., og nær til loka mánaðarins á undan. Þessi útgáfa ({release}) nær til og með',
     'ebd.tail': 'Nýrri skráningar, og þær sem bíða yfirferðar, birtast ekki enn.',
 
-    'map.reset': 'Upphafleg sýn',
+    'map.zoomOut': 'Þysja út',
     'map.points': 'Mínir staðir ({n})',
     'map.pointTip': '{k} gátlistar · {s} tegundir',
     'map.species': '{n} tegundir',
@@ -294,7 +294,7 @@ const STRINGS = {
     'ebd.body': 'The EBD is published monthly, on the 15th, and runs to the end of the month before. This build ({release}) covers records through',
     'ebd.tail': 'Anything newer, or still awaiting review, is not here yet.',
 
-    'map.reset': 'Reset view',
+    'map.zoomOut': 'Zoom Out',
     'map.points': 'My localities ({n})',
     'map.pointTip': '{k} checklists · {s} species',
     'map.species': '{n} species',

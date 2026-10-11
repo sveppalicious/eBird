@@ -96,6 +96,13 @@ rewrite:
   and re-requesting all of them;
 - **it stood 475 px tall for Grindavík and 1,819 px for Eyjafjarðarsveit.**
 
+It follows eBird's own map: white ground, thin white borders, the legend inside
+the frame, and a **Zoom Out** button that goes up one level. There are no +/−
+buttons — the wheel, a pinch or a double-click zoom. Neighbouring regions are
+coloured too, paler, since grey neighbours read as "no records"; and the
+sveitarfélag behind its own areas is not outlined, because the areas are cut a
+little short of it and every skerry they miss showed up as an empty ring.
+
 One map instance lives for the life of the page; navigating restyles the shapes
 and flies to the region. A region with children shows them; a leaf shows itself
 among its siblings, so there is always something next door to click. On a touch

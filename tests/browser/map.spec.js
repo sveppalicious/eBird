@@ -145,20 +145,30 @@ test.describe('the map is how you get around', () => {
     expect(Math.abs(after.lng - before.lng) + Math.abs(after.lat - before.lat)).toBeGreaterThan(0.001);
   });
 
-  test('the reset button returns to the region', async ({ page }) => {
-    await page.goto('/#/r/0000-reykjavikurborg');
+  test('Zoom Out goes up one level, and is absent at the top', async ({ page }) => {
+    await page.goto('/#/r/0000-reykjavikurborg-midborg');
     await mapReady(page);
-    await settled(page);
-    const home = await mapState(page);
-    const box = await page.locator('.map-frame').boundingBox();
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    for (let i = 0; i < 5; i++) { await page.mouse.wheel(0, -120); await page.waitForTimeout(60); }
-    await settled(page);
-    expect((await mapState(page)).zoom).not.toBe(home.zoom);
+    await page.locator('.map-zoom-out').click();
+    await expect(page).toHaveURL(/#\/r\/0000-reykjavikurborg$/);
+    await page.locator('.map-zoom-out').click();
+    await expect(page.locator('h1')).toHaveText('Ísland');
+    await expect(page.locator('.map-zoom-out')).toHaveCount(0);
+    // On a species page it widens the scope and stays on the species.
+    await page.goto('/#/s/arcter/6100-nordurthing');
+    await page.locator('.map-zoom-out').click();
+    await expect(page).toHaveURL(/#\/s\/arcter$/);
+  });
 
-    await page.locator('.map-btn').first().click();
-    await settled(page);
-    expect((await mapState(page)).zoom).toBe(home.zoom);
+  test('no zoom buttons, and no outline drawn for the sveitarfélag behind its areas', async ({ page }) => {
+    // That outline left every skerry the areas do not cover as an empty ring.
+    await page.goto('/#/r/3716-sveitarfelagid-stykkisholmur');
+    await mapReady(page);
+    await expect(page.locator('.leaflet-control-zoom')).toHaveCount(0);
+    const holder = page.locator('.region-shape[data-id="3716-sveitarfelagid-stykkisholmur"]');
+    expect(await holder.evaluate(el => getComputedStyle(el).strokeOpacity)).toBe('0');
+    // Neighbours are coloured, not grey.
+    const fills = await page.locator('.region-shape').evaluateAll(els => [...new Set(els.map(e => e.getAttribute('fill')))]);
+    expect(fills.length).toBeGreaterThan(3);
   });
 
   test('the tooltip names the sveitarfélag an area belongs to', async ({ page }) => {

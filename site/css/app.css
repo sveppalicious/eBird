@@ -144,17 +144,15 @@ h2 { font-size: 20px; font-weight: 600; color: var(--slate-dk); margin: 34px 0 6
    element is in the page, finds no computed position, and sets
    `position: relative` inline -- under which `inset: 0` means a height of 0. */
 .map-host, .region-map { width: 100%; height: 100%; }
-.region-map { background: #f8fbfc; }
+.region-map { background: #fff; }
 .leaflet-container { font: inherit; }
 .leaflet-container .region-shape { cursor: pointer; outline: none; }
-.leaflet-bar a { color: var(--slate-dk); }
 
-.map-controls { position: absolute; top: 10px; right: 10px; z-index: 900; display: flex; gap: 6px; }
+.map-controls { position: absolute; top: 10px; left: 10px; z-index: 900; display: flex; flex-wrap: wrap; gap: 6px; }
 .map-btn {
   font: 600 12px/1 inherit; padding: 8px 11px; cursor: pointer;
   background: rgba(255,255,255,0.95); color: var(--link);
   border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(35,49,58,0.18);
 }
 .map-btn:hover { border-color: var(--slate); }
 .map-btn.is-active { background: var(--slate-dk); color: #fff; border-color: var(--slate-dk); }
@@ -171,6 +169,12 @@ h2 { font-size: 20px; font-weight: 600; color: var(--slate-dk); margin: 34px 0 6
 .map-legend, .chart-legend {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   font-size: 12px; color: var(--ink-soft); margin-top: 6px;
+}
+/* Inside the frame, bottom left, where eBird keeps its own. */
+.map-legend {
+  position: absolute; left: 10px; bottom: 8px; z-index: 900; margin: 0;
+  padding: 3px 6px; border-radius: 4px; background: rgba(255,255,255,0.85);
+  pointer-events: none;
 }
 .legend-bar { display: block; width: 180px; height: 10px; border-radius: 2px; }
 .legend-label { color: var(--ink-faint); }
