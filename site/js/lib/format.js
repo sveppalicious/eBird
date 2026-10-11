@@ -1,29 +1,46 @@
 // format.js -- dates, numbers, names and the links back out to eBird.
+// Pure: no DOM, no storage, so it runs under node for the tests.
 
-const MONTHS_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const MONTHS_IS = ['jan','feb','mar','apr','maí','jún','júl','ágú','sep','okt','nóv','des'];
+const MONTHS = {
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  is: ['jan', 'feb', 'mar', 'apr', 'maí', 'jún', 'júl', 'ágú', 'sep', 'okt', 'nóv', 'des']
+};
+
+const DAY = 86400000;
 
 // Dates travel as days since 1970-01-01 (compact, and sortable as integers).
 function dayToDate(d) {
-  return new Date(d * 86400000);
+  return new Date(d * DAY);
 }
 
 function fmtDate(d, lang) {
   if (d === null || d === undefined) return '';
   const dt = dayToDate(d);
-  const m = (lang === 'is' ? MONTHS_IS : MONTHS_EN)[dt.getUTCMonth()];
+  const m = (MONTHS[lang] || MONTHS.en)[dt.getUTCMonth()];
   return `${dt.getUTCDate()} ${m} ${dt.getUTCFullYear()}`;
+}
+
+// "22 Apr": for arrival dates, where the year is the other axis.
+function fmtDayMonth(d, lang) {
+  if (d === null || d === undefined) return '';
+  const dt = dayToDate(d);
+  return `${dt.getUTCDate()} ${(MONTHS[lang] || MONTHS.en)[dt.getUTCMonth()]}`;
 }
 
 // Personal-export dates arrive as "YYYY-MM-DD"; the site's own dates are days
 // since epoch. Convert so both render through the same formatter.
 function isoToDay(iso) {
   return Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1,
-                             +iso.slice(8, 10)) / 86400000);
+                             +iso.slice(8, 10)) / DAY);
 }
 
 function dayYear(d)  { return dayToDate(d).getUTCFullYear(); }
 function dayMonth(d) { return dayToDate(d).getUTCMonth(); }
+
+// Day of the year, 1-based, so 1 Jan is 1 in every year.
+function dayOfYear(d) {
+  return d - Math.round(Date.UTC(dayYear(d), 0, 1) / DAY) + 1;
+}
 
 function fmtNum(n) {
   if (n === null || n === undefined) return '';
@@ -44,6 +61,16 @@ function fmtDuration(min) {
   return h ? `${h}h ${m}m` : `${m}m`;
 }
 
+// A share between 0 and 1 as a percentage. Below 1% one decimal is kept, since
+// "0%" for a bird on 40 checklists reads as "never".
+function fmtPct(p) {
+  if (p === null || p === undefined || !Number.isFinite(p)) return '';
+  const v = p * 100;
+  if (v === 0) return '0%';
+  if (v < 1) return (v < 0.1 ? '<0,1' : v.toFixed(1).replace('.', ',')) + '%';
+  return Math.round(v) + '%';
+}
+
 // ---- eBird links ------------------------------------------------------------
 
 const ebird = {
@@ -61,8 +88,8 @@ const ebird = {
   // eBird's router wants those kept or stripped could not be confirmed --
   // checklist and profile pages both redirect to login when signed out. Standard
   // base64 keeps the padding, so that is what we emit. If a padded link 404s
-  // while a 6-digit one works, flip STRIP_BASE64_PADDING and rebuild nothing:
-  // this is the only place it is used.
+  // while a 6-digit one works, flip STRIP_BASE64_PADDING: this is the only place
+  // it is used.
   observer: obsr => {
     let token = btoa(String(obsr).replace(/^obsr/, ''));
     if (ebird.STRIP_BASE64_PADDING) token = token.replace(/=+$/, '');
@@ -93,32 +120,16 @@ function spSecondary(tax, lang) {
   return tax.sci;
 }
 
-// ---- small DOM helpers ------------------------------------------------------
-
-function el(tag, attrs, ...kids) {
-  const n = document.createElement(tag);
-  for (const k in (attrs || {})) {
-    const v = attrs[k];
-    if (v === null || v === undefined || v === false) continue;
-    if (k === 'class') n.className = v;
-    else if (k === 'text') n.textContent = v;
-    else if (k === 'html') n.innerHTML = v;
-    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
-    else n.setAttribute(k, v);
-  }
-  for (const kid of kids.flat()) {
-    if (kid === null || kid === undefined || kid === false) continue;
-    n.appendChild(typeof kid === 'string' ? document.createTextNode(kid) : kid);
-  }
-  return n;
-}
-
-function extLink(href, text, cls) {
-  if (!href) return el('span', { class: cls || '' }, text);
-  return el('a', { class: cls || '', href, target: '_blank', rel: 'noopener' }, text);
+// Lower-case and strip diacritics, so "kria" finds Kría and "thing" finds
+// Þingeyjarsveit. þ, ð and æ are letters rather than accents, so they need
+// mapping by hand.
+function fold(s) {
+  return String(s || '').toLowerCase()
+    .replace(/þ/g, 'th').replace(/ð/g, 'd').replace(/æ/g, 'ae').replace(/ö/g, 'o')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
 export {
-  MONTHS_EN, MONTHS_IS, dayToDate, fmtDate, dayYear, dayMonth, isoToDay,
-  fmtNum, fmtCount, fmtDuration, ebird, spName, spSecondary, el, extLink
+  MONTHS, dayToDate, fmtDate, fmtDayMonth, dayYear, dayMonth, dayOfYear, isoToDay,
+  fmtNum, fmtCount, fmtDuration, fmtPct, ebird, spName, spSecondary, fold
 };

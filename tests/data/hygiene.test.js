@@ -62,7 +62,7 @@ describe('nothing private is publishable', () => {
     // profiles by id. Anything looking like a display name in checklists.json
     // would mean a different source crept in.
     const chk = JSON.parse(
-      readFileSync(join(SITE, 'data/mun/0000-reykjavikurborg/checklists.json'), 'utf8'));
+      readFileSync(join(SITE, 'data/region/0000-reykjavikurborg/checklists.json'), 'utf8'));
     for (const o of chk.obsrs) {
       assert.match(o, /^obsr\d+$/, `observer field "${o}" is not an opaque id`);
     }
@@ -70,6 +70,8 @@ describe('nothing private is publishable', () => {
 });
 
 describe('the site stays self-contained', () => {
+  // Our own code. The vendored libraries are checked separately: Leaflet's
+  // source mentions its own homepage, which is a string, not a request.
   const jsFiles = () => walkFiles(join(SITE, 'js')).filter(p => p.endsWith('.js'));
 
   test('index.html loads only its own files', () => {
@@ -80,11 +82,7 @@ describe('the site stays self-contained', () => {
     for (const m of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
       const url = m[1];
       if (url.startsWith('#') || url.startsWith('data:')) continue;
-      if (/^https?:\/\//.test(url)) {
-        assert.match(url, /^https:\/\/ebird\.org\//,
-          `index.html links out to ${url}`);
-        continue;
-      }
+      assert.ok(!/^https?:\/\//.test(url) && !url.startsWith('//'), `index.html loads ${url}`);
       assert.ok(!url.startsWith('/'), `absolute path ${url} breaks the /eBird/ subpath`);
     }
   });
@@ -95,57 +93,84 @@ describe('the site stays self-contained', () => {
     }
   });
 
-  test('the only third-party network calls are the opt-in basemaps', () => {
-    // A basemap is off by default, which is what keeps the site usable offline
-    // and free of runtime third parties. Anything else fetching across the
-    // network would take that away silently.
-    const allowed = [/tile\.openstreetmap\.org/, /server\.arcgisonline\.com/,
-                     /openstreetmap\.org\/copyright/, /www\.esri\.com/,
-                     /ebird\.org/, /api\.ebird\.org/,
-                     // Not a network call: the SVG namespace is an identifier,
-                     // and createElementNS refuses to work without it.
-                     /^http:\/\/www\.w3\.org\/2000\/svg$/];
+  test('libraries are vendored, never loaded from a CDN', () => {
+    for (const f of ['vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',
+                     'vendor/preact/standalone.module.js']) {
+      assert.ok(existsSync(join(SITE, f)), `${f} is missing`);
+    }
+    // Every import in our code is a relative path into the repo.
     for (const f of jsFiles()) {
       const src = readFileSync(f, 'utf8');
-      for (const m of src.matchAll(/https?:\/\/[^\s'"`)]+/g)) {
-        const url = m[0];
-        assert.ok(allowed.some(re => re.test(url)),
-          `${relative(ROOT, f)} references ${url}`);
+      for (const m of src.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)) {
+        assert.ok(m[1].startsWith('./') || m[1].startsWith('../'),
+          `${relative(ROOT, f)} imports ${m[1]}`);
       }
     }
   });
 
-  test('the personal import never leaves the browser', () => {
-    // There is no backend, and this file holds a complete history of where
-    // somebody has been. Uploading it would be the single worst thing this
-    // project could do, so the ways of doing it are named here rather than
-    // trusted to review.
-    const src = readFileSync(join(SITE, 'js/mydata.js'), 'utf8');
-    for (const bad of ['XMLHttpRequest', 'WebSocket', 'sendBeacon', 'FormData',
-                       'action=', 'method: \'POST\'', 'method: "POST"']) {
-      assert.ok(!src.includes(bad), `mydata.js contains ${bad}`);
+  test('our code names no host but ebird.org, and only ever as a link', () => {
+    // There are no map tiles any more, so the rule is simple: the page requests
+    // nothing from anyone else. The only URLs left are the links out to eBird.
+    for (const f of jsFiles()) {
+      const src = readFileSync(f, 'utf8');
+      for (const m of src.matchAll(/https?:\/\/[^\s'"`)<]+/g)) {
+        assert.match(m[0], /^https:\/\/ebird\.org\//, `${relative(ROOT, f)} references ${m[0]}`);
+      }
     }
   });
 
-  test('mydata.js only ever fetches the site\'s own payloads', () => {
-    // It does fetch -- the lookups that place a locality in a municipality --
-    // and that is fine as long as every call is a same-origin GET of a relative
-    // data/ path. An absolute URL here would be data leaving the machine.
-    const src = readFileSync(join(SITE, 'js/mydata.js'), 'utf8');
-    const calls = [...src.matchAll(/fetch\(\s*(['"`])(.*?)\1/g)].map(m => m[2]);
-    assert.ok(calls.length > 0, 'expected the lookup fetches to still be here');
-    for (const url of calls) {
-      assert.match(url, /^data\//, `mydata.js fetches ${url}`);
-    }
-    // A second argument to fetch is where a method or body would go.
-    assert.ok(!/fetch\(\s*(['"`]).*?\1\s*,/.test(src),
-      'a fetch in mydata.js has options -- check for a method or body');
+  test('the map draws no tiles', () => {
+    // A tile layer is the one thing that would quietly reintroduce third-party
+    // requests, and the flash the old map had.
+    const src = readFileSync(join(SITE, 'js/ui/RegionMap.js'), 'utf8');
+    assert.ok(!/tileLayer\s*\(/.test(src), 'RegionMap.js creates a tile layer');
   });
 
-  test('every .js under site/ parses as an ES module', () => {
-    // Nothing compiles this code, so a typo in a module the router only loads
-    // for one route can reach production. `node --check` parses without
-    // executing, which is what lets it cover the DOM-coupled modules too.
+  test('the personal table never leaves the browser', () => {
+    // There is no backend, and this is a complete history of where somebody
+    // has been. Uploading it would be the single worst thing this project could
+    // do, so the ways of doing it are named here rather than trusted to review.
+    // personal.js is pure computation and mine.js is IndexedDB: neither has
+    // any business touching the network at all.
+    for (const f of ['js/lib/personal.js', 'js/data/mine.js', 'js/lib/csv.js']) {
+      const src = readFileSync(join(SITE, f), 'utf8')
+        .replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');     // comments may name them
+      for (const bad of ['fetch(', 'XMLHttpRequest', 'WebSocket', 'sendBeacon', 'FormData',
+                         'EventSource', 'importScripts']) {
+        assert.ok(!src.includes(bad), `${f} contains ${bad}`);
+      }
+    }
+  });
+
+  test('the upload page reads the file and fetches only our own lookups', () => {
+    const page = readFileSync(join(SITE, 'js/ui/MyDataPage.js'), 'utf8');
+    assert.ok(!page.includes('fetch('), 'MyDataPage.js fetches directly');
+    for (const bad of ['XMLHttpRequest', 'WebSocket', 'sendBeacon', 'FormData']) {
+      assert.ok(!page.includes(bad), `MyDataPage.js contains ${bad}`);
+    }
+    // The one fetch in the data layer is a GET of a relative data/ path.
+    const remote = readFileSync(join(SITE, 'js/data/remote.js'), 'utf8');
+    const calls = [...remote.matchAll(/fetch\(([^)]*)\)/g)].map(m => m[1]);
+    assert.equal(calls.length, 1, 'expected exactly one fetch in remote.js');
+    assert.ok(calls[0].includes('${BASE}/'), `fetch target is ${calls[0]}`);
+    assert.ok(!calls[0].includes(','), 'a fetch with options -- check for a method or body');
+    assert.match(remote, /const BASE = 'data';/);
+  });
+
+  test('the pure library stays pure', () => {
+    // lib/ is what the unit tests run under node, and what could one day run in
+    // a worker. One stray `document` and neither is true.
+    for (const f of walkFiles(join(SITE, 'js/lib')).filter(p => p.endsWith('.js'))) {
+      const src = readFileSync(f, 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const bad of ['document.', 'window.', 'localStorage', 'indexedDB', 'fetch(']) {
+        assert.ok(!src.includes(bad), `${relative(ROOT, f)} uses ${bad}`);
+      }
+    }
+  });
+
+  test('every .js under site/js parses as an ES module', () => {
+    // Nothing compiles this code, so a typo in a module only one route loads
+    // can reach production. `node --check` parses without executing.
     for (const f of jsFiles()) {
       try {
         execFileSync(process.execPath, ['--check', f], { stdio: 'pipe' });

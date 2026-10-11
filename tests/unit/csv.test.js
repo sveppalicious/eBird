@@ -8,7 +8,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseCSV } from '../../site/js/mydata.js';
+import { parseCSV } from '../../site/js/lib/csv.js';
 
 describe('parseCSV', () => {
   test('plain rows', () => {

@@ -6,9 +6,9 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  fmtDate, fmtNum, fmtCount, fmtDuration, isoToDay, dayYear, dayMonth,
-  ebird, spName, spSecondary, MONTHS_EN, MONTHS_IS
-} from '../../site/js/format.js';
+  fmtDate, fmtDayMonth, fmtNum, fmtCount, fmtDuration, fmtPct, isoToDay, dayYear, dayMonth,
+  dayOfYear, ebird, spName, spSecondary, fold, MONTHS
+} from '../../site/js/lib/format.js';
 
 describe('dates', () => {
   test('day 0 is 1 Jan 1970 in both languages', () => {
@@ -44,8 +44,8 @@ describe('dates', () => {
   test('dayYear and dayMonth agree with the formatted string', () => {
     assert.equal(dayYear(20634), 2026);
     assert.equal(dayMonth(20634), 5);          // zero-based: June
-    assert.equal(MONTHS_EN[dayMonth(20634)], 'Jun');
-    assert.equal(MONTHS_IS[dayMonth(20634)], 'jún');
+    assert.equal(MONTHS.en[dayMonth(20634)], 'Jun');
+    assert.equal(MONTHS.is[dayMonth(20634)], 'jún');
   });
 });
 
@@ -141,5 +141,56 @@ describe('species names', () => {
   test('an unknown taxon never renders as undefined', () => {
     assert.equal(typeof spName(undefined, 'is'), 'string');
     assert.equal(typeof spSecondary(undefined, 'is'), 'string');
+  });
+});
+
+describe('day of year', () => {
+  test('1 January is day 1 in every year, leap or not', () => {
+    // Arrival dates are compared across years on this axis; an off-by-one in
+    // leap years would shift every date after February.
+    assert.equal(dayOfYear(isoToDay('2023-01-01')), 1);
+    assert.equal(dayOfYear(isoToDay('2024-01-01')), 1);
+    assert.equal(dayOfYear(isoToDay('2023-12-31')), 365);
+    assert.equal(dayOfYear(isoToDay('2024-12-31')), 366);
+  });
+
+  test('fmtDayMonth drops the year', () => {
+    assert.equal(fmtDayMonth(isoToDay('2025-04-19'), 'en'), '19 Apr');
+    assert.equal(fmtDayMonth(isoToDay('2025-04-19'), 'is'), '19 apr');
+  });
+});
+
+describe('percentages', () => {
+  test('whole numbers above one percent', () => {
+    assert.equal(fmtPct(0.243), '24%');
+    assert.equal(fmtPct(1), '100%');
+  });
+
+  test('a rare bird is not rounded down to "0%"', () => {
+    // Forty checklists out of 160,000 is not "never". Showing 0% for a species
+    // the table then lists records of would be a contradiction on one row.
+    assert.equal(fmtPct(0.004), '0,4%');
+    assert.equal(fmtPct(0.0002), '<0,1%');
+    assert.equal(fmtPct(0), '0%');
+  });
+
+  test('nothing to divide by renders as nothing, not NaN%', () => {
+    assert.equal(fmtPct(null), '');
+    assert.equal(fmtPct(NaN), '');
+    assert.equal(fmtPct(Infinity), '');
+  });
+});
+
+describe('search folding', () => {
+  test('accents are optional', () => {
+    assert.equal(fold('Kría'), 'kria');
+    assert.ok(fold('Skógarþröstur').includes('skogarthrostur'));
+  });
+
+  test('þ, ð and æ are letters, and fold to what people type', () => {
+    // These are not accented forms of anything, so Unicode normalisation alone
+    // leaves them untouched and "thing" would never find Þingeyjarsveit.
+    assert.equal(fold('Þingeyjarsveit'), 'thingeyjarsveit');
+    assert.equal(fold('Garðabær'), 'gardabaer');
   });
 });

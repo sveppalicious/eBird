@@ -28,6 +28,6 @@ export default defineConfig({
     url: 'http://127.0.0.1:8788/index.html',
     reuseExistingServer: !process.env.CI,
     stdout: 'ignore',
-    stderr: 'pipe'
+    stderr: 'ignore'
   }
 });
